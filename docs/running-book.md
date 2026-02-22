@@ -4,6 +4,30 @@ Setup guide and troubleshooting reference for AI Script to Media.
 
 ---
 
+## Project Structure
+
+```
+AIScriptToMediaDotNet/
+├── src/
+│   ├── AIScriptToMediaDotNet.Core/        # Shared kernel (interfaces, options)
+│   ├── AIScriptToMediaDotNet.Providers/   # AI providers (Ollama)
+│   ├── AIScriptToMediaDotNet.Agents/      # Agent implementations
+│   ├── AIScriptToMediaDotNet.Services/    # External services (ComfyUI)
+│   └── AIScriptToMediaDotNet.App/         # Entry point (Program.cs, appsettings.json)
+│
+├── tests/
+│   ├── AIScriptToMediaDotNet.Core.Tests/
+│   ├── AIScriptToMediaDotNet.Providers.Tests/
+│   ├── AIScriptToMediaDotNet.Agents.Tests/
+│   └── AIScriptToMediaDotNet.Integration.Tests/
+│
+└── docs/
+```
+
+See [ADR-004](adr/ADR-004-solution-structure.md) for the architecture decision.
+
+---
+
 ## Prerequisites
 
 ### 1. .NET 10 SDK
@@ -38,7 +62,8 @@ ollama serve
 **Install Recommended Models**:
 ```bash
 # General purpose model (for parsing, creation, verification agents)
-ollama pull llama3.1
+# Configure model name in appsettings.json (Ollama:DefaultModel)
+ollama pull lfm2.5-thinking
 
 # Alternative (smaller, faster)
 ollama pull mistral
@@ -52,8 +77,8 @@ ollama pull mixtral
 ollama list
 # Should show installed models
 
-ollama run llama3.1 "Hello, world!"
-# Should return AI response
+ollama run lfm2.5-thinking "Hello, world!"
+# Should return AI response (use model configured in appsettings.json)
 ```
 
 ---
@@ -91,24 +116,37 @@ python main.py --listen
 
 ### appsettings.json
 
-Create `appsettings.json` in project root:
+The `appsettings.json` file is located in `src/AIScriptToMediaDotNet.App/`:
 
 ```json
 {
-  "OllamaEndpoint": "http://localhost:11434",
-  "ComfyUIEndpoint": "http://localhost:8188",
-  "MaxRetries": 3,
-  "OutputPath": "./output",
-  "Models": {
-    "SceneParser": "llama3.1",
-    "SceneVerifier": "llama3.1",
-    "PhotoPromptCreator": "llama3.1",
-    "PhotoPromptVerifier": "llama3.1",
-    "VideoPromptCreator": "llama3.1",
-    "VideoPromptVerifier": "llama3.1"
+  "Ollama": {
+    "Endpoint": "http://localhost:11434",
+    "DefaultModel": "lfm2.5-thinking",
+    "TimeoutSeconds": 120,
+    "MaxRetries": 3,
+    "RetryDelaySeconds": 2,
+    "AgentModels": {
+      "DefaultModel": "lfm2.5-thinking",
+      "SceneParser": "lfm2.5-thinking",
+      "SceneVerifier": "lfm2.5-thinking",
+      "PhotoPromptCreator": "lfm2.5-thinking",
+      "PhotoPromptVerifier": "lfm2.5-thinking",
+      "VideoPromptCreator": "lfm2.5-thinking",
+      "VideoPromptVerifier": "lfm2.5-thinking"
+    }
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "System": "Warning"
+    }
   }
 }
 ```
+
+> **Note**: Model names are configurable. Replace `lfm2.5-thinking` with your preferred model (e.g., `llama3.1`, `mistral`, `mixtral`).
 
 ### Environment Variables (Alternative)
 
@@ -125,17 +163,39 @@ OUTPUT_PATH=./output
 
 ### Build
 ```bash
+# Build entire solution
 dotnet build
+
+# Build specific project
+dotnet build src/AIScriptToMediaDotNet.Core
 ```
 
-### Run
+### Run Tests
 ```bash
+# Run all tests
+dotnet test
+
+# Run specific test project
+dotnet test tests/AIScriptToMediaDotNet.Core.Tests
+
+# Run with verbose output
+dotnet test --logger "console;verbosity=detailed"
+
+# Run with code coverage
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+### Run Application
+```bash
+# Run from solution root
+dotnet run --project src/AIScriptToMediaDotNet.App -- --input script.txt --output ./output
+
+# Or change to App directory first
+cd src/AIScriptToMediaDotNet.App
 dotnet run -- --input script.txt --output ./output
-```
 
-### Run with Configuration
-```bash
-dotnet run -- --input script.txt --config appsettings.json
+# Run with configuration
+dotnet run --project src/AIScriptToMediaDotNet.App -- --input script.txt --config appsettings.json
 ```
 
 ---
@@ -155,11 +215,13 @@ dotnet run -- --input script.txt --config appsettings.json
 
 ### Model Not Found
 
-**Error**: `model 'llama3.1' not found`
+**Error**: `model '<model-name>' not found`
 
 **Solution**:
 ```bash
-ollama pull llama3.1
+# Check which model is configured in appsettings.json
+# Then pull that model:
+ollama pull lfm2.5-thinking
 ```
 
 ---
@@ -183,7 +245,7 @@ ollama pull llama3.1
 **Solutions**:
 1. Reduce image resolution in ComfyUI settings
 2. Close other GPU-intensive applications
-3. Use smaller models in Ollama (e.g., `mistral` instead of `llama3.1`)
+3. Use smaller models in Ollama (configure in `appsettings.json`, e.g., `mistral` instead of larger models)
 4. Set `--lowvram` flag for ComfyUI
 
 ---
@@ -262,8 +324,8 @@ start ./output/images
 | Use Case | Recommended Model |
 |----------|-------------------|
 | Fast iteration | `mistral`, `phi3` |
-| Best quality | `llama3.1:70b`, `mixtral` |
-| Balanced | `llama3.1:8b` |
+| Best quality | Configure in `appsettings.json` (e.g., `lfm2.5-thinking`, `mixtral`) |
+| Balanced | Configure in `appsettings.json` (e.g., `lfm2.5-thinking`) |
 
 ---
 

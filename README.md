@@ -48,6 +48,28 @@ The `agent-log.md` file captures:
 
 ## Architecture
 
+### Project Structure
+
+```
+AIScriptToMediaDotNet/
+├── src/
+│   ├── AIScriptToMediaDotNet.Core/        # Shared kernel (interfaces, options)
+│   ├── AIScriptToMediaDotNet.Providers/   # AI providers (Ollama, future: OpenAI, Anthropic)
+│   ├── AIScriptToMediaDotNet.Agents/      # Agent implementations (vertical slices)
+│   ├── AIScriptToMediaDotNet.Services/    # External services (ComfyUI, Export)
+│   └── AIScriptToMediaDotNet.App/         # Composition root (entry point)
+│
+├── tests/
+│   ├── AIScriptToMediaDotNet.Core.Tests/
+│   ├── AIScriptToMediaDotNet.Providers.Tests/
+│   ├── AIScriptToMediaDotNet.Agents.Tests/
+│   └── AIScriptToMediaDotNet.Integration.Tests/
+│
+└── docs/
+```
+
+### Multi-Agent Pipeline
+
 Multi-agent pipeline with verification loops:
 
 ```mermaid
@@ -91,7 +113,7 @@ Each verification stage has up to 3 retry attempts before proceeding.
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Ollama](https://ollama.ai) running locally (default: `http://localhost:11434`)
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) running locally
-- Recommended Ollama models: `llama3.1`, `llava` (or similar capable models)
+- Recommended Ollama models: Configure via `appsettings.json` (e.g., `lfm2.5-thinking`, `llama3.1`, `llava`, or similar capable models)
 
 ## Quick Start
 
@@ -99,8 +121,15 @@ Each verification stage has up to 3 retry attempts before proceeding.
 # Clone and build
 dotnet build
 
-# Run with a script file
+# Run tests
+dotnet test
+
+# Run the application (from src/AIScriptToMediaDotNet.App directory)
+cd src/AIScriptToMediaDotNet.App
 dotnet run -- --title "My Script" --input script.txt --output ./output
+
+# Or run from solution root
+dotnet run --project src/AIScriptToMediaDotNet.App -- --title "My Script" --input script.txt --output ./output
 
 # Output: ./output/My Script_2026-02-23_14-30-00/
 ```

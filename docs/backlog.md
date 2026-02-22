@@ -87,17 +87,20 @@ flowchart TB
 
 ### [CORE-002] AI Provider Abstraction
 **Priority**: P0  
-**Status**: Todo
+**Status**: ✅ Done  
+**GitHub**: [#2](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/2)  
+**Completed**: 2026-02-23  
+**Branch**: `feature/CORE-002-ai-provider`
 
 **As a** system architect  
 **I want** an `IAIProvider` interface  
 **So that** I can swap between Ollama and cloud providers easily
 
 **Acceptance Criteria**:
-- [ ] `IAIProvider` interface defined with `GenerateResponseAsync(prompt, options)` method
-- [ ] `OllamaProvider` implementation using HTTP client
-- [ ] Provider configuration via settings
-- [ ] Support for model selection per call
+- [x] `IAIProvider` interface defined with `GenerateResponseAsync(prompt, options)` method
+- [x] `OllamaProvider` implementation using HTTP client
+- [x] Provider configuration via settings
+- [x] Support for model selection per call
 
 ---
 

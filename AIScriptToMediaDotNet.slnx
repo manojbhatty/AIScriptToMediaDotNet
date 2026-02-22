@@ -1,3 +1,15 @@
 <Solution>
-  <Project Path="AIScriptToMediaDotNet/AIScriptToMediaDotNet.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/AIScriptToMediaDotNet.Agents/AIScriptToMediaDotNet.Agents.csproj" />
+    <Project Path="src/AIScriptToMediaDotNet.App/AIScriptToMediaDotNet.App.csproj" />
+    <Project Path="src/AIScriptToMediaDotNet.Core/AIScriptToMediaDotNet.Core.csproj" />
+    <Project Path="src/AIScriptToMediaDotNet.Providers/AIScriptToMediaDotNet.Providers.csproj" />
+    <Project Path="src/AIScriptToMediaDotNet.Services/AIScriptToMediaDotNet.Services.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AIScriptToMediaDotNet.Agents.Tests/AIScriptToMediaDotNet.Agents.Tests.csproj" />
+    <Project Path="tests/AIScriptToMediaDotNet.Core.Tests/AIScriptToMediaDotNet.Core.Tests.csproj" />
+    <Project Path="tests/AIScriptToMediaDotNet.Integration.Tests/AIScriptToMediaDotNet.Integration.Tests.csproj" />
+    <Project Path="tests/AIScriptToMediaDotNet.Providers.Tests/AIScriptToMediaDotNet.Providers.Tests.csproj" />
+  </Folder>
 </Solution>

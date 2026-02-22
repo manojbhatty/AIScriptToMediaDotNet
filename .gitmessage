@@ -1,0 +1,35 @@
+# {Short summary in present tense - 50 chars max}
+
+# {Optional: More detailed explanation}
+# {Wrap at 72 characters}
+#
+# Explain WHAT changed and WHY (not HOW - that's in the diff)
+# Use present tense: "Add feature" not "Added feature"
+# Use imperative mood: "Fix bug" not "Fixes bug"
+#
+# Add blank line between summary and body
+#
+# Reference issues: "Refs #123" or "Closes #123"
+# "Closes", "Fixes", or "Resolves" will auto-close on merge
+#
+# Examples:
+#   Add IAIProvider interface
+#   -------------------------
+#   Add IAIProvider interface
+#   OllamaProvider implementation
+#   Configuration for model selection
+#   
+#   Refs #2
+#
+#   Complete OllamaProvider with error handling
+#   -------------------------------------------
+#   Implement HTTP client with timeout
+#   Add retry logic for failed requests
+#   Add model fallback chain
+#   
+#   Closes #2
+
+# --- COMMIT END ---
+# Backlog: docs/backlog.md
+# Contributing: CONTRIBUTING.md
+# --- COMMIT END ---

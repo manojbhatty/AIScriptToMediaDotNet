@@ -7,7 +7,7 @@ using AIScriptToMediaDotNet.Core.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AIScriptToMediaDotNet.Core.Providers;
+namespace AIScriptToMediaDotNet.Providers.Ollama;
 
 /// <summary>
 /// Provides AI inference via Ollama.
@@ -32,6 +32,12 @@ public class OllamaProvider : IAIProvider
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <inheritdoc />
+    public string GetModelForAgent(string agentName)
+    {
+        return _options.AgentModels.GetModelForAgent(agentName);
     }
 
     /// <inheritdoc />
@@ -126,7 +132,7 @@ public class OllamaProvider : IAIProvider
 
     private class OllamaRequest
     {
-        public string Model { get; set; } = "llama3.1";
+        public string Model { get; set; } = "";
         public string Prompt { get; set; } = "";
         public bool Stream { get; set; }
         public OllamaGenerationOptions? Options { get; set; }

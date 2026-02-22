@@ -30,4 +30,11 @@ public interface IAIProvider
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the provider is available.</returns>
     Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the configured model name for a specific agent.
+    /// </summary>
+    /// <param name="agentName">The agent name.</param>
+    /// <returns>The model name configured for this agent.</returns>
+    string GetModelForAgent(string agentName);
 }

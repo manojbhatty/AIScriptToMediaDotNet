@@ -70,7 +70,7 @@ classDiagram
 flowchart TD
     Start[Agent Needs LLM] --> Config{Check Config}
     Config -->|Model specified| UseModel[Use Configured Model]
-    Config -->|No model| Default[Use Default: llama3.1]
+    Config -->|No model| Default[Use Default from appsettings.json]
     UseModel --> Available{Model Available?}
     Default --> Available
     Available -->|Yes| Generate[Generate Response]
@@ -106,10 +106,12 @@ public class OllamaProvider : IAIProvider
 
 | Task | Model | Rationale |
 |------|-------|-----------|
-| All agents (default) | `llama3.1:8b` | Good balance of speed/quality |
+| All agents (default) | Configure in `appsettings.json` | Good balance of speed/quality |
 | Fast iteration | `mistral:7b` | Faster, decent quality |
-| Best quality | `llama3.1:70b` | Slower, higher quality |
+| Best quality | Configure larger model in `appsettings.json` | Slower, higher quality |
 | Resource constrained | `phi3:mini` | Very fast, minimal RAM |
+
+> **Note**: Model names are configured in `appsettings.json` under `Ollama:DefaultModel` and `Ollama:AgentModels`.
 
 ## Consequences
 
@@ -191,9 +193,17 @@ Policy.Handle<HttpRequestException>()
 
 ### Model Fallback Strategy
 
-If preferred model unavailable:
-```
-llama3.1 → mistral → phi3
+If preferred model unavailable, configure fallback in `appsettings.json`:
+
+```json
+{
+  "Ollama": {
+    "DefaultModel": "lfm2.5-thinking",
+    "AgentModels": {
+      "DefaultModel": "mistral"
+    }
+  }
+}
 ```
 
 ### Future Cloud Provider

@@ -178,17 +178,19 @@ public class SceneParserAgent : CreatorAgent<List<Scene>>
         : base(aiProvider, logger) { }
     
     public override async Task<AgentResult> ProcessAsync(
-        ScriptToMediaContext context, 
+        ScriptToMediaContext context,
         CancellationToken ct)
     {
         var prompt = BuildSceneParsingPrompt(context.OriginalScript);
-        
-        var response = await InvokeAIAsync(prompt, "llama3.1", ct);
-        
+
+        // Model is retrieved from configuration via IAIProvider.GetModelForAgent()
+        var model = _aiProvider.GetModelForAgent(Name);
+        var response = await InvokeAIAsync(prompt, model, ct);
+
         var scenes = ParseScenesFromResponse(response);
-        
+
         context.Scenes = scenes;
-        
+
         return AgentResult.Ok(scenes);
     }
     
@@ -225,14 +227,16 @@ public class SceneVerifierAgent : VerifierAgent<List<Scene>>
     }
     
     public override async Task<ValidationResult> ValidateAsync(
-        List<Scene> scenes, 
-        ScriptToMediaContext context, 
+        List<Scene> scenes,
+        ScriptToMediaContext context,
         CancellationToken ct)
     {
         var prompt = BuildSceneVerificationPrompt(context.OriginalScript, scenes);
-        
-        var response = await InvokeAIAsync(prompt, "llama3.1", ct);
-        
+
+        // Model is retrieved from configuration via IAIProvider.GetModelForAgent()
+        var model = _aiProvider.GetModelForAgent(Name);
+        var response = await InvokeAIAsync(prompt, model, ct);
+
         return ParseValidationResult(response);
     }
 }

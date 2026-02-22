@@ -82,7 +82,7 @@ Refs #2"
 git commit -m "Complete OllamaProvider with model selection
 
 - Add model configuration from settings
-- Implement fallback chain (llama3.1 → mistral → phi3)
+- Implement fallback chain using configured DefaultModel
 - Add IsAvailableAsync health check
 
 Closes #2"
@@ -125,13 +125,39 @@ public class OllamaProvider : IAIProvider
 
 ```
 AIScriptToMediaDotNet/
-├── Core/           # Interfaces, base classes, context
-├── Agents/         # Agent implementations
-├── Providers/      # AI provider implementations
-├── Services/       # External service clients (ComfyUI, etc.)
-├── Export/         # Exporters, loggers
-└── Program.cs      # Entry point, DI setup
+├── src/
+│   ├── AIScriptToMediaDotNet.Core/        # Interfaces, options, shared types
+│   ├── AIScriptToMediaDotNet.Providers/   # AI provider implementations
+│   ├── AIScriptToMediaDotNet.Agents/      # Agent implementations (vertical slices)
+│   ├── AIScriptToMediaDotNet.Services/    # External service clients
+│   └── AIScriptToMediaDotNet.App/         # Entry point, DI configuration
+│
+└── tests/
+    ├── AIScriptToMediaDotNet.Core.Tests/
+    ├── AIScriptToMediaDotNet.Providers.Tests/
+    ├── AIScriptToMediaDotNet.Agents.Tests/
+    └── AIScriptToMediaDotNet.Integration.Tests/
 ```
+
+### Project Responsibilities
+
+| Project | Responsibility | Examples |
+|---------|---------------|----------|
+| **Core** | Shared abstractions | `IAIProvider`, `ModelOptions`, `OllamaOptions` |
+| **Providers** | AI provider implementations | `OllamaProvider`, future `OpenAIProvider` |
+| **Agents** | Agent business logic | `SceneParserAgent`, `PhotoPromptCreatorAgent` |
+| **Services** | External service clients | `ComfyUIClient`, `ExportService` |
+| **App** | Composition, configuration | `Program.cs`, `appsettings.json` |
+
+### Namespace Conventions
+
+| Project | Root Namespace | Example |
+|---------|---------------|---------|
+| Core | `AIScriptToMediaDotNet.Core` | `AIScriptToMediaDotNet.Core.Interfaces.IAIProvider` |
+| Providers | `AIScriptToMediaDotNet.Providers` | `AIScriptToMediaDotNet.Providers.Ollama.OllamaProvider` |
+| Agents | `AIScriptToMediaDotNet.Agents` | `AIScriptToMediaDotNet.Agents.Scene.SceneParserAgent` |
+| Services | `AIScriptToMediaDotNet.Services` | `AIScriptToMediaDotNet.Services.ComfyUI.ComfyUIClient` |
+| App | `AIScriptToMediaDotNet.App` | `AIScriptToMediaDotNet.App.Program` |
 
 ---
 
@@ -140,9 +166,29 @@ AIScriptToMediaDotNet/
 ### Before Submitting
 
 - [ ] Code builds: `dotnet build`
-- [ ] Tests pass: `dotnet test` (when tests exist)
+- [ ] Tests pass: `dotnet test`
 - [ ] No compiler warnings
 - [ ] Updated relevant documentation
+- [ ] Project references are correct (no circular dependencies)
+
+### Building and Testing
+
+```bash
+# Build entire solution
+dotnet build
+
+# Run all tests
+dotnet test
+
+# Run specific test project
+dotnet test tests/AIScriptToMediaDotNet.Core.Tests
+
+# Run with code coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Run the application
+dotnet run --project src/AIScriptToMediaDotNet.App
+```
 
 ### Creating a PR
 

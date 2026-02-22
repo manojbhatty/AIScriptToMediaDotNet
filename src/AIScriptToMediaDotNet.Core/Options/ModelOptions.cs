@@ -6,9 +6,9 @@ namespace AIScriptToMediaDotNet.Core.Options;
 public class ModelOptions
 {
     /// <summary>
-    /// The model name to use (e.g., "llama3.1", "mistral", "gpt-4").
+    /// The model name to use (e.g., "lfm2.5-thinking", "mistral", "gpt-4").
     /// </summary>
-    public string Model { get; set; } = "llama3.1";
+    public string Model { get; set; } = string.Empty;
 
     /// <summary>
     /// Maximum tokens to generate in the response.

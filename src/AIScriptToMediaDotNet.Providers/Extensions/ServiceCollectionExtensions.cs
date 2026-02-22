@@ -1,12 +1,12 @@
 using AIScriptToMediaDotNet.Core.Interfaces;
 using AIScriptToMediaDotNet.Core.Options;
-using AIScriptToMediaDotNet.Core.Providers;
+using AIScriptToMediaDotNet.Providers.Ollama;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AIScriptToMediaDotNet.Core.Extensions;
+namespace AIScriptToMediaDotNet.Providers.Extensions;
 
 /// <summary>
-/// Extension methods for configuring AI services.
+/// Extension methods for configuring AI providers.
 /// </summary>
 public static class ServiceCollectionExtensions
 {

@@ -11,4 +11,10 @@ public class AgentPrompts
     /// Use {0} as placeholder for the script text.
     /// </summary>
     public string SceneParserPrompt { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the prompt template for scene verification.
+    /// Use {0} as placeholder for the scenes JSON.
+    /// </summary>
+    public string SceneVerifierPrompt { get; set; } = string.Empty;
 }

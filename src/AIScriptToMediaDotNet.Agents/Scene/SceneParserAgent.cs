@@ -11,9 +11,18 @@ using SceneModel = AIScriptToMediaDotNet.Core.Context.Scene;
 namespace AIScriptToMediaDotNet.Agents.Scene;
 
 /// <summary>
+/// Input for scene parsing, optionally including feedback from previous attempts.
+/// </summary>
+public class SceneParserInput
+{
+    public string Script { get; set; } = string.Empty;
+    public string? Feedback { get; set; }
+}
+
+/// <summary>
 /// Agent that parses script text into discrete scenes.
 /// </summary>
-public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
+public class SceneParserAgent : CreatorAgent<SceneParserInput, List<SceneModel>>
 {
     private readonly AgentPrompts _prompts;
 
@@ -36,16 +45,21 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     }
 
     /// <inheritdoc />
-    public override async Task<AgentResult<List<SceneModel>>> ProcessAsync(string script, CancellationToken cancellationToken = default)
+    public override async Task<AgentResult<List<SceneModel>>> ProcessAsync(SceneParserInput input, CancellationToken cancellationToken = default)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
-            _logger.LogInformation("Starting scene parsing for script ({Length} chars)", script.Length);
+            _logger.LogInformation("Starting scene parsing for script ({Length} chars)", input.Script.Length);
+            
+            if (!string.IsNullOrEmpty(input.Feedback))
+            {
+                _logger.LogInformation("Using feedback from previous attempt: {Feedback}", input.Feedback);
+            }
 
-            // Build the prompt
-            var prompt = BuildPrompt(script);
+            // Build the prompt (includes feedback if this is a retry)
+            var prompt = BuildPrompt(input);
             _logger.LogInformation("Generated prompt ({Length} chars)", prompt.Length);
             _logger.LogDebug("Prompt preview: {Preview}", prompt.Length > 500 ? prompt.Substring(0, 500) + "..." : prompt);
 
@@ -77,13 +91,13 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     /// <summary>
     /// Creates the list of scenes from the script.
     /// </summary>
-    /// <param name="script">The script text to parse.</param>
+    /// <param name="input">The parsing input containing script and optional feedback.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The parsed list of scenes.</returns>
-    protected override async Task<List<SceneModel>> CreateAsync(string script, CancellationToken cancellationToken = default)
+    protected override async Task<List<SceneModel>> CreateAsync(SceneParserInput input, CancellationToken cancellationToken = default)
     {
-        // Build the prompt
-        var prompt = BuildPrompt(script);
+        // Build the prompt (includes feedback if this is a retry)
+        var prompt = BuildPrompt(input);
 
         // Invoke AI
         var response = await InvokeAIAsync(prompt, cancellationToken);
@@ -95,12 +109,19 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     /// <summary>
     /// Builds the prompt for scene parsing.
     /// </summary>
-    /// <param name="script">The script text to parse.</param>
+    /// <param name="input">The parsing input containing script and optional feedback.</param>
     /// <returns>The prompt to send to the AI.</returns>
-    protected override string BuildPrompt(string script)
+    protected override string BuildPrompt(SceneParserInput input)
     {
-        // Replace {0} placeholder with the script text
-        return _prompts.SceneParserPrompt.Replace("{0}", script, StringComparison.OrdinalIgnoreCase);
+        var prompt = _prompts.SceneParserPrompt.Replace("{{0}}", input.Script, StringComparison.OrdinalIgnoreCase);
+        
+        // If we have feedback from a previous verification attempt, append it
+        if (!string.IsNullOrEmpty(input.Feedback))
+        {
+            prompt += $"\n\nIMPORTANT FEEDBACK FROM PREVIOUS REVIEW:\n{input.Feedback}\n\nPlease revise your scene parsing to address this feedback. Identify ALL distinct story beats and create separate scenes for each.";
+        }
+        
+        return prompt;
     }
 
     /// <summary>
@@ -113,31 +134,43 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
         // Extract JSON from markdown code blocks if present
         var json = ExtractJsonFromMarkdown(response);
         
-        var options = new JsonSerializerOptions
+        try
         {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip
-        };
-
-        var scenes = JsonSerializer.Deserialize<List<SceneModel>>(json, options)
-            ?? throw new JsonException("Failed to deserialize scenes from JSON");
-
-        // Validate and assign default IDs if missing
-        for (int i = 0; i < scenes.Count; i++)
-        {
-            var scene = scenes[i];
-            if (string.IsNullOrEmpty(scene.Id))
+            var options = new JsonSerializerOptions
             {
-                scene.Id = $"SCENE-{(i + 1):D3}";
-            }
-            if (string.IsNullOrEmpty(scene.Time))
+                PropertyNameCaseInsensitive = true,
+                ReadCommentHandling = JsonCommentHandling.Skip
+            };
+
+            var scenes = JsonSerializer.Deserialize<List<SceneModel>>(json, options)
+                ?? throw new JsonException("Failed to deserialize scenes from JSON - null result");
+
+            // Validate and assign default IDs if missing
+            for (int i = 0; i < scenes.Count; i++)
             {
-                scene.Time = "DAY"; // Default
+                var scene = scenes[i];
+                if (string.IsNullOrEmpty(scene.Id))
+                {
+                    scene.Id = $"SCENE-{(i + 1):D3}";
+                }
+                if (string.IsNullOrEmpty(scene.Time))
+                {
+                    scene.Time = "DAY"; // Default
+                }
             }
+
+            _logger.LogDebug("Successfully parsed {Count} scenes", scenes.Count);
+            return scenes;
         }
-
-        _logger.LogDebug("Successfully parsed {Count} scenes", scenes.Count);
-        return scenes;
+        catch (JsonException ex)
+        {
+            // Log the problematic JSON for debugging
+            var jsonPreview = json.Length > 2000 ? json.Substring(0, 2000) + $"... ({json.Length - 2000} more chars)" : json;
+            _logger.LogError(ex, "JSON parsing failed. Problematic JSON:\n{Json}", jsonPreview);
+            
+            // Re-throw with JSON context for error logging
+            throw new JsonException($"JSON parsing failed. Problematic JSON preview: {jsonPreview}", ex);
+        }
     }
 
     /// <summary>

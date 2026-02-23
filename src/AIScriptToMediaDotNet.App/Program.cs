@@ -259,6 +259,14 @@ internal class Program
             return new SceneParserAgent(aiProvider, logger, prompts);
         });
 
+        services.AddScoped<SceneVerifierAgent>(sp =>
+        {
+            var aiProvider = sp.GetRequiredService<IAIProvider>();
+            var logger = sp.GetRequiredService<ILogger<SceneVerifierAgent>>();
+            var prompts = sp.GetRequiredService<AgentPrompts>();
+            return new SceneVerifierAgent(aiProvider, logger, prompts);
+        });
+
         // Add orchestrator
         services.AddSingleton<PipelineOrchestrator>(sp =>
         {

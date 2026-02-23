@@ -1,9 +1,14 @@
 using AIScriptToMediaDotNet.Agents.Scene;
+using AIScriptToMediaDotNet.Core.Agents;
 using AIScriptToMediaDotNet.Core.Context;
 using AIScriptToMediaDotNet.Core.Logging;
 using AIScriptToMediaDotNet.Core.Orchestration;
 using AIScriptToMediaDotNet.Core.Prompts;
 using Microsoft.Extensions.Logging;
+
+using SceneModel = AIScriptToMediaDotNet.Core.Context.Scene;
+using SceneParserInput = AIScriptToMediaDotNet.Agents.Scene.SceneParserInput;
+using SceneVerificationInput = AIScriptToMediaDotNet.Agents.Scene.SceneVerificationInput;
 
 namespace AIScriptToMediaDotNet.App;
 
@@ -14,6 +19,7 @@ public class ScriptToMediaService
 {
     private readonly PipelineOrchestrator _orchestrator;
     private readonly SceneParserAgent _sceneParser;
+    private readonly SceneVerifierAgent _sceneVerifier;
     private readonly ILogger<ScriptToMediaService> _logger;
     private readonly PipelineExecutionContext _executionContext;
 
@@ -22,14 +28,17 @@ public class ScriptToMediaService
     /// </summary>
     /// <param name="orchestrator">The pipeline orchestrator.</param>
     /// <param name="sceneParser">The scene parser agent.</param>
+    /// <param name="sceneVerifier">The scene verifier agent.</param>
     /// <param name="logger">The logger instance.</param>
     public ScriptToMediaService(
         PipelineOrchestrator orchestrator,
         SceneParserAgent sceneParser,
+        SceneVerifierAgent sceneVerifier,
         ILogger<ScriptToMediaService> logger)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _sceneParser = sceneParser ?? throw new ArgumentNullException(nameof(sceneParser));
+        _sceneVerifier = sceneVerifier ?? throw new ArgumentNullException(nameof(sceneVerifier));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _executionContext = new PipelineExecutionContext();
     }
@@ -75,11 +84,11 @@ public class ScriptToMediaService
 
             // Stage 1: Scene Parsing
             _logger.LogInformation("Stage 1: Parsing scenes...");
-            var parsed = await _orchestrator.ExecuteStageAsync(
+            var parsed = await _orchestrator.ExecuteStageAsync<SceneParserInput, List<SceneModel>>(
                 context,
                 "SceneParsing",
                 _sceneParser,
-                ctx => ctx.OriginalScript,
+                ctx => new SceneParserInput { Script = ctx.OriginalScript },
                 (ctx, scenes) => ctx.Scenes = scenes,
                 cancellationToken,
                 _executionContext);
@@ -98,7 +107,35 @@ public class ScriptToMediaService
             }
 
             _logger.LogInformation("Successfully parsed {SceneCount} scenes", context.Scenes.Count);
-            _executionContext.LogAgentComplete("SceneParser", "SceneParsing", $"{context.Scenes.Count} scenes parsed", 0);
+
+            // Stage 2: Scene Verification
+            _logger.LogInformation("Stage 2: Verifying scenes...");
+            var verified = await _orchestrator.ExecuteStageAsync<SceneVerificationInput, ValidationResult>(
+                context,
+                "SceneVerification",
+                _sceneVerifier,
+                ctx => new SceneVerificationInput { OriginalScript = ctx.OriginalScript, Scenes = ctx.Scenes },
+                (ctx, validationResult) => { /* Validation result stored in context if needed */ },
+                cancellationToken,
+                _executionContext);
+
+            if (!verified)
+            {
+                _logger.LogError("Scene verification failed after all retries");
+                _executionContext.Fail("Scene verification failed after all retries");
+                
+                // Export error log even on failure
+                var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
+                ExportErrorLog(_executionContext, errorLogPath);
+                _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
+                
+                return context;
+            }
+
+            _logger.LogInformation("Scenes verified successfully");
+            _executionContext.LogAgentComplete("SceneVerifier", "SceneVerification", 
+                $"{context.Scenes.Count} scenes verified", 
+                PipelineExecutionContext.SerializeToJson(context.Scenes), 0);
 
             // Log pipeline status
             var status = _orchestrator.GetPipelineStatus(context);

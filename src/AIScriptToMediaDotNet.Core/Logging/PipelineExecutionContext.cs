@@ -41,9 +41,19 @@ public class AgentLogEntry
     public string? InputSummary { get; set; }
 
     /// <summary>
+    /// Gets or sets the input data as JSON for detailed debugging.
+    /// </summary>
+    public string? InputData { get; set; }
+
+    /// <summary>
     /// Gets or sets the output summary (truncated for large outputs).
     /// </summary>
     public string? OutputSummary { get; set; }
+
+    /// <summary>
+    /// Gets or sets the output data as JSON for detailed debugging.
+    /// </summary>
+    public string? OutputData { get; set; }
 
     /// <summary>
     /// Gets or sets the error details including stack trace.
@@ -141,8 +151,9 @@ public class PipelineExecutionContext
     /// <param name="agent">The agent name.</param>
     /// <param name="stage">The stage name.</param>
     /// <param name="inputSummary">Summary of the input.</param>
+    /// <param name="inputData">The actual input data serialized to JSON.</param>
     /// <returns>The created log entry.</returns>
-    public AgentLogEntry LogAgentStart(string agent, string stage, string inputSummary)
+    public AgentLogEntry LogAgentStart(string agent, string stage, string inputSummary, string? inputData = null)
     {
         var entry = new AgentLogEntry
         {
@@ -151,7 +162,8 @@ public class PipelineExecutionContext
             Stage = stage,
             Event = "Start",
             Message = $"Agent {agent} started stage {stage}",
-            InputSummary = Truncate(inputSummary, 500)
+            InputSummary = Truncate(inputSummary, 500),
+            InputData = inputData
         };
         AddLogEntry(entry);
         return entry;
@@ -163,9 +175,10 @@ public class PipelineExecutionContext
     /// <param name="agent">The agent name.</param>
     /// <param name="stage">The stage name.</param>
     /// <param name="outputSummary">Summary of the output.</param>
+    /// <param name="outputData">The actual output data serialized to JSON.</param>
     /// <param name="executionTimeMs">Execution time in milliseconds.</param>
     /// <returns>The created log entry.</returns>
-    public AgentLogEntry LogAgentComplete(string agent, string stage, string outputSummary, long executionTimeMs)
+    public AgentLogEntry LogAgentComplete(string agent, string stage, string outputSummary, string? outputData, long executionTimeMs)
     {
         var entry = new AgentLogEntry
         {
@@ -175,6 +188,7 @@ public class PipelineExecutionContext
             Event = "Complete",
             Message = $"Agent {agent} completed stage {stage} successfully",
             OutputSummary = Truncate(outputSummary, 500),
+            OutputData = outputData,
             ExecutionTimeMs = executionTimeMs
         };
         AddLogEntry(entry);
@@ -267,5 +281,38 @@ public class PipelineExecutionContext
         if (string.IsNullOrEmpty(text)) return text;
         if (text.Length <= maxLength) return text;
         return text.Substring(0, maxLength) + $"... ({text.Length - maxLength} more chars)";
+    }
+
+    /// <summary>
+    /// Serializes an object to JSON for logging.
+    /// </summary>
+    /// <param name="obj">The object to serialize.</param>
+    /// <param name="maxLength">Maximum length of the serialized string.</param>
+    /// <returns>JSON string or null if object is null.</returns>
+    public static string? SerializeToJson(object? obj, int maxLength = 5000)
+    {
+        if (obj == null) return null;
+        
+        try
+        {
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                MaxDepth = 10
+            };
+            
+            var json = System.Text.Json.JsonSerializer.Serialize(obj, options);
+            
+            if (json.Length > maxLength)
+            {
+                return json.Substring(0, maxLength) + $"\n... ({json.Length - maxLength} more chars)";
+            }
+            
+            return json;
+        }
+        catch
+        {
+            return obj?.ToString();
+        }
     }
 }

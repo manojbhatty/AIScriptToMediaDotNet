@@ -51,11 +51,11 @@ public class PipelineOrchestrator
     {
         _logger.LogInformation("Starting stage: {StageName} (Agent: {AgentName})", stageName, agent.Name);
         context.MarkStageStarted(stageName);
-        executionContext?.LogAgentStart(agent.Name, stageName, $"Stage: {stageName}");
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var attempt = 0;
         string? feedback = null;
+        TInput? lastInput = default(TInput);
 
         while (attempt < _maxRetriesPerStage)
         {
@@ -67,8 +67,27 @@ public class PipelineOrchestrator
 
             try
             {
-                // Get input from context
-                var input = inputProvider(context);
+                // Get input from context (or modify existing input to include feedback)
+                if (lastInput == null)
+                {
+                    lastInput = inputProvider(context);
+                    
+                    // Log the start with input data (on first attempt)
+                    var inputJson = PipelineExecutionContext.SerializeToJson(lastInput);
+                    var inputSummary = lastInput?.ToString() ?? "null";
+                    executionContext?.LogAgentStart(agent.Name, stageName, inputSummary, inputJson);
+                }
+                else
+                {
+                    // For types that support feedback (like SceneParserInput), update the feedback property
+                    var inputType = lastInput!.GetType();
+                    var feedbackProperty = inputType.GetProperty("Feedback");
+                    if (feedbackProperty != null && !string.IsNullOrEmpty(feedback))
+                    {
+                        feedbackProperty.SetValue(lastInput, feedback);
+                        _logger.LogDebug("Updated input with feedback: {Feedback}", feedback);
+                    }
+                }
 
                 // If we have feedback from previous attempt, log it
                 if (!string.IsNullOrEmpty(feedback))
@@ -78,7 +97,7 @@ public class PipelineOrchestrator
                 }
 
                 // Execute the agent
-                var result = await agent.ProcessAsync(input, cancellationToken);
+                var result = await agent.ProcessAsync(lastInput!, cancellationToken);
                 stopwatch.Stop();
 
                 if (result.Success)
@@ -86,8 +105,13 @@ public class PipelineOrchestrator
                     // Consume the output and update context
                     outputConsumer(context, result.Data!);
                     context.MarkStageComplete(stageName, result.ExecutionTime);
-                    executionContext?.LogAgentComplete(agent.Name, stageName, 
-                        result.Data?.ToString() ?? "Success", (long)result.ExecutionTime.TotalMilliseconds);
+                    
+                    // Serialize output data for logging
+                    var outputJson = PipelineExecutionContext.SerializeToJson(result.Data);
+                    var outputSummary = result.Data?.ToString() ?? "Success";
+                    
+                    executionContext?.LogAgentComplete(agent.Name, stageName,
+                        outputSummary, outputJson, (long)result.ExecutionTime.TotalMilliseconds);
 
                     _logger.LogInformation(
                         "Stage {StageName} completed successfully in {ElapsedMs}ms (Attempt {Attempt})",
@@ -98,9 +122,16 @@ public class PipelineOrchestrator
 
                 // Stage failed - store errors and feedback for retry
                 feedback = result.Metadata.TryGetValue("Feedback", out var fb) ? fb?.ToString() : null;
+                
+                // If no feedback in metadata, use errors as feedback
+                if (string.IsNullOrEmpty(feedback) && result.Errors.Any())
+                {
+                    feedback = string.Join("; ", result.Errors);
+                }
+                
                 context.MarkStageFailed(stageName, result.Errors, feedback);
-                executionContext?.LogAgentError(agent.Name, stageName, 
-                    string.Join("; ", result.Errors), null, input?.ToString());
+                executionContext?.LogAgentError(agent.Name, stageName,
+                    string.Join("; ", result.Errors), null, lastInput?.ToString());
 
                 _logger.LogWarning(
                     "Stage {StageName} failed (Attempt {Attempt}/{MaxRetries}): {Errors}",
@@ -145,7 +176,7 @@ public class PipelineOrchestrator
         context.MarkStageFailed(stageName,
             new[] { $"Stage failed after {_maxRetriesPerStage} attempts" },
             null);
-        executionContext?.LogAgentError(agent.Name, stageName, 
+        executionContext?.LogAgentError(agent.Name, stageName,
             $"Stage failed after {_maxRetriesPerStage} attempts", null);
 
         return false;

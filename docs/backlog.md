@@ -191,19 +191,22 @@ flowchart TB
 ---
 
 ### [SCENE-002] Scene Verifier Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#18](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/18)
+**Completed**: 2026-02-23
+**Branch**: `feature/SCENE-002-verifier-agent`
 
-**As a** quality gate  
-**I want** an agent that validates parsed scenes  
+**As a** quality gate
+**I want** an agent that validates parsed scenes
 **So that** incorrect scene breakdowns are caught early
 
 **Acceptance Criteria**:
-- [ ] Receives original script + parsed scenes
-- [ ] Validates: scene count合理性, scene descriptions match script, no missing content
-- [ ] Returns validation result with specific errors
-- [ ] Can request re-parse with feedback
-- [ ] Works with orchestrator retry loop
+- [x] Receives original script + parsed scenes
+- [x] Validates: scene count, scene descriptions match script, no missing content
+- [x] Returns validation result with specific errors
+- [x] Can request re-parse with feedback
+- [x] Works with orchestrator retry loop
 
 ---
 
@@ -471,3 +474,72 @@ flowchart TB
 - Pick next P0 item when time allows
 - No sprint commitments - ad-hoc development
 - Update status as work progresses
+
+---
+
+## Implementation Guidelines
+
+### Verifier Agent Requirements
+
+**ALL verifier agents (current and future) MUST:**
+
+1. **Return feedback in ValidationResult** when validation fails:
+   ```csharp
+   return ValidationResult.Fail("Error message", "Specific feedback for creator agent");
+   ```
+
+2. **Include actionable feedback** that tells the creator agent HOW to fix the issue:
+   - ✅ Good: "Split Scene 1 into two scenes: coffee shop and park"
+   - ✅ Good: "Add missing proposal scene between Scene 2 and Scene 3"
+   - ❌ Bad: "Invalid scenes" (no actionable feedback)
+
+3. **Return warnings for incomplete content** - warnings with keywords like "missing", "incomplete", "should be created" will automatically trigger retry:
+   ```csharp
+   return new ValidationResult {
+       IsValid = true,  // Even if true, warnings with missing content trigger retry
+       Warnings = { "Proposal scene is missing from the sequence" }
+   };
+   ```
+
+4. **Use ValidationResult structure**:
+   ```csharp
+   public class ValidationResult
+   {
+       public bool IsValid { get; set; }
+       public List<string> Errors { get; set; } = new();
+       public List<string> Warnings { get; set; } = new();
+       public string? Feedback { get; set; }  // REQUIRED for retries
+   }
+   ```
+
+### Future Verifier Agents
+
+The following verifier agents need to be implemented following the same pattern as `SceneVerifierAgent`:
+
+| Agent | Issue | Feedback Examples |
+|-------|-------|-------------------|
+| PHOTO-002: Photo Prompt Verifier | #20 | "Add lighting details to Scene 3 prompt", "Include camera angle for Scene 5" |
+| VIDEO-002: Video Prompt Verifier | #22 | "Specify motion duration for Scene 2", "Add transition details between scenes" |
+
+### Creator Agent Requirements
+
+**ALL creator agents MUST support feedback on retry:**
+
+1. **Accept feedback in input type**:
+   ```csharp
+   public class PhotoPromptCreatorInput
+   {
+       public List<Scene> Scenes { get; set; }
+       public string? Feedback { get; set; }  // From verifier retry
+   }
+   ```
+
+2. **Append feedback to prompt** when present:
+   ```csharp
+   if (!string.IsNullOrEmpty(input.Feedback))
+   {
+       prompt += $"\n\nIMPORTANT FEEDBACK FROM PREVIOUS REVIEW:\n{input.Feedback}";
+   }
+   ```
+
+3. **Address feedback in revised output** - AI will use feedback to improve the output

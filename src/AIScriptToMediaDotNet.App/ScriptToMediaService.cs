@@ -1,4 +1,5 @@
 using AIScriptToMediaDotNet.Agents.Scene;
+using AIScriptToMediaDotNet.Agents.Photo;
 using AIScriptToMediaDotNet.Core.Agents;
 using AIScriptToMediaDotNet.Core.Context;
 using AIScriptToMediaDotNet.Core.Logging;
@@ -9,6 +10,8 @@ using Microsoft.Extensions.Logging;
 using SceneModel = AIScriptToMediaDotNet.Core.Context.Scene;
 using SceneParserInput = AIScriptToMediaDotNet.Agents.Scene.SceneParserInput;
 using SceneVerificationInput = AIScriptToMediaDotNet.Agents.Scene.SceneVerificationInput;
+using PhotoPromptCreatorInput = AIScriptToMediaDotNet.Agents.Photo.PhotoPromptCreatorInput;
+using PhotoPromptVerificationInput = AIScriptToMediaDotNet.Agents.Photo.PhotoPromptVerificationInput;
 
 namespace AIScriptToMediaDotNet.App;
 
@@ -20,6 +23,8 @@ public class ScriptToMediaService
     private readonly PipelineOrchestrator _orchestrator;
     private readonly SceneParserAgent _sceneParser;
     private readonly SceneVerifierAgent _sceneVerifier;
+    private readonly PhotoPromptCreatorAgent _photoPromptCreator;
+    private readonly PhotoPromptVerifierAgent _photoPromptVerifier;
     private readonly ILogger<ScriptToMediaService> _logger;
     private readonly PipelineExecutionContext _executionContext;
 
@@ -29,16 +34,22 @@ public class ScriptToMediaService
     /// <param name="orchestrator">The pipeline orchestrator.</param>
     /// <param name="sceneParser">The scene parser agent.</param>
     /// <param name="sceneVerifier">The scene verifier agent.</param>
+    /// <param name="photoPromptCreator">The photo prompt creator agent.</param>
+    /// <param name="photoPromptVerifier">The photo prompt verifier agent.</param>
     /// <param name="logger">The logger instance.</param>
     public ScriptToMediaService(
         PipelineOrchestrator orchestrator,
         SceneParserAgent sceneParser,
         SceneVerifierAgent sceneVerifier,
+        PhotoPromptCreatorAgent photoPromptCreator,
+        PhotoPromptVerifierAgent photoPromptVerifier,
         ILogger<ScriptToMediaService> logger)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _sceneParser = sceneParser ?? throw new ArgumentNullException(nameof(sceneParser));
         _sceneVerifier = sceneVerifier ?? throw new ArgumentNullException(nameof(sceneVerifier));
+        _photoPromptCreator = photoPromptCreator ?? throw new ArgumentNullException(nameof(photoPromptCreator));
+        _photoPromptVerifier = photoPromptVerifier ?? throw new ArgumentNullException(nameof(photoPromptVerifier));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _executionContext = new PipelineExecutionContext();
     }
@@ -136,6 +147,58 @@ public class ScriptToMediaService
             _executionContext.LogAgentComplete("SceneVerifier", "SceneVerification", 
                 $"{context.Scenes.Count} scenes verified", 
                 PipelineExecutionContext.SerializeToJson(context.Scenes), 0);
+
+            // Stage 3: Photo Prompt Creation
+            _logger.LogInformation("Stage 3: Creating photo prompts...");
+            var photoPromptsCreated = await _orchestrator.ExecuteStageAsync<PhotoPromptCreatorInput, List<PhotoPrompt>>(
+                context,
+                "PhotoPromptCreation",
+                _photoPromptCreator,
+                ctx => new PhotoPromptCreatorInput { Scenes = ctx.Scenes },
+                (ctx, photoPrompts) => ctx.PhotoPrompts = photoPrompts,
+                cancellationToken,
+                _executionContext);
+
+            if (!photoPromptsCreated)
+            {
+                _logger.LogError("Photo prompt creation failed after all retries");
+                _executionContext.Fail("Photo prompt creation failed after all retries");
+                
+                // Export error log even on failure
+                var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
+                ExportErrorLog(_executionContext, errorLogPath);
+                _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
+                
+                return context;
+            }
+
+            _logger.LogInformation("Successfully created {PromptCount} photo prompts", context.PhotoPrompts.Count);
+
+            // Stage 4: Photo Prompt Verification
+            _logger.LogInformation("Stage 4: Verifying photo prompts...");
+            var photoPromptsVerified = await _orchestrator.ExecuteStageAsync<PhotoPromptVerificationInput, ValidationResult>(
+                context,
+                "PhotoPromptVerification",
+                _photoPromptVerifier,
+                ctx => new PhotoPromptVerificationInput { Scenes = ctx.Scenes, PhotoPrompts = ctx.PhotoPrompts },
+                (ctx, validationResult) => { /* Validation result stored if needed */ },
+                cancellationToken,
+                _executionContext);
+
+            if (!photoPromptsVerified)
+            {
+                _logger.LogError("Photo prompt verification failed after all retries");
+                _executionContext.Fail("Photo prompt verification failed after all retries");
+                
+                // Export error log even on failure
+                var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
+                ExportErrorLog(_executionContext, errorLogPath);
+                _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
+                
+                return context;
+            }
+
+            _logger.LogInformation("Photo prompts verified successfully");
 
             // Log pipeline status
             var status = _orchestrator.GetPipelineStatus(context);

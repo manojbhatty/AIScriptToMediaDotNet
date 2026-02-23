@@ -6,7 +6,7 @@ namespace AIScriptToMediaDotNet.Core.Options;
 public class ModelOptions
 {
     /// <summary>
-    /// The model name to use (e.g., "granite3.3:2b", "mistral", "gpt-4").
+    /// The model name to use (e.g., "qwen3:latest", "mistral", "gpt-4").
     /// </summary>
     public string Model { get; set; } = string.Empty;
 

@@ -113,14 +113,14 @@ public class SceneParserAgent : CreatorAgent<SceneParserInput, List<SceneModel>>
     /// <returns>The prompt to send to the AI.</returns>
     protected override string BuildPrompt(SceneParserInput input)
     {
-        var prompt = _prompts.SceneParserPrompt.Replace("{{0}}", input.Script, StringComparison.OrdinalIgnoreCase);
-        
+        var prompt = _prompts.SceneParserPrompt.Replace("{0}", input.Script, StringComparison.OrdinalIgnoreCase);
+
         // If we have feedback from a previous verification attempt, append it
         if (!string.IsNullOrEmpty(input.Feedback))
         {
             prompt += $"\n\nIMPORTANT FEEDBACK FROM PREVIOUS REVIEW:\n{input.Feedback}\n\nPlease revise your scene parsing to address this feedback. Identify ALL distinct story beats and create separate scenes for each.";
         }
-        
+
         return prompt;
     }
 

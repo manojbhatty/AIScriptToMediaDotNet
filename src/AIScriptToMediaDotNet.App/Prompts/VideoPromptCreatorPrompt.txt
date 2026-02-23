@@ -9,28 +9,30 @@ For EACH scene provided, create a detailed video generation prompt that includes
 - **Visual Effects**: Any VFX or special visual elements
 - **Script Excerpt**: A brief 1-2 sentence excerpt from the scene that this prompt represents
 
+CRITICAL: Generate prompts based ONLY on the scenes provided above. Do NOT copy any example content.
+
 Return your response as a valid JSON array of video prompt objects. Each scene should have at least one prompt.
 
 SCENES TO CONVERT:
 {0}
 
-Respond with ONLY a JSON array in this exact format:
+Respond with ONLY a JSON array. Here is the STRUCTURE (NOT content - generate actual content from scenes):
 [
   {
     "id": "VPROMPT-001",
     "sceneId": "SCENE-001",
-    "prompt": "Complete detailed video prompt combining all elements",
-    "motion": "Character walks across room, picks up object",
-    "cameraMovement": "Slow dolly in, slight pan to follow action",
-    "durationSeconds": 5,
-    "transitions": "Fade in from black, cut to next scene",
-    "pacing": "medium",
-    "visualEffects": "Subtle depth of field, motion blur",
-    "scriptExcerpt": "John approaches Mary at the counter, his hands trembling slightly."
+    "prompt": "<complete detailed video prompt>",
+    "motion": "<what moves in the scene>",
+    "cameraMovement": "<camera movement details>",
+    "durationSeconds": <number>,
+    "transitions": "<transition details>",
+    "pacing": "<pacing>",
+    "visualEffects": "<VFX details>",
+    "scriptExcerpt": "<brief excerpt from scene>"
   }
 ]
 
-**IMPORTANT**: 
+**IMPORTANT**:
 - Each prompt should be detailed enough for AI video generation
 - Include specific details about movement, timing, and camera work
 - **REQUIRED**: Include a scriptExcerpt for EACH prompt - this is a brief quote or description from the scene that the prompt represents

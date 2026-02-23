@@ -30,12 +30,12 @@ IMPORTANT: You must verify that ALL scenes CUMULATIVELY tell the COMPLETE story.
    - Is ANY important dialogue, action, or plot point from the script missing?
    - Are scene transitions logical and complete?
 
-Respond with ONLY a JSON object in this exact format:
+Respond with ONLY a JSON object. Here is the STRUCTURE (NOT content - provide actual analysis):
 {
   "isValid": true,
-  "errors": ["List SPECIFIC missing content"],
-  "warnings": ["List any concerns or suggestions"],
-  "feedback": "Specific instructions for what to fix"
+  "errors": ["<list SPECIFIC missing content>"],
+  "warnings": ["<list any concerns or suggestions>"],
+  "feedback": "<specific instructions for what to fix>"
 }
 
 ORIGINAL SCRIPT:

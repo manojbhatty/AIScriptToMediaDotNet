@@ -102,11 +102,11 @@ public class SceneVerifierAgent : VerifierAgent<SceneVerificationInput>
     protected override string BuildPrompt(SceneVerificationInput input)
     {
         var scenesJson = JsonSerializer.Serialize(input.Scenes, new JsonSerializerOptions { WriteIndented = true });
-        
-        // Replace {{0}} with script and {{1}} with scenes JSON
-        var prompt = _prompts.SceneVerifierPrompt.Replace("{{0}}", input.OriginalScript, StringComparison.OrdinalIgnoreCase);
-        prompt = prompt.Replace("{{1}}", scenesJson, StringComparison.OrdinalIgnoreCase);
-        
+
+        // Replace {0} with script and {1} with scenes JSON
+        var prompt = _prompts.SceneVerifierPrompt.Replace("{0}", input.OriginalScript, StringComparison.OrdinalIgnoreCase);
+        prompt = prompt.Replace("{1}", scenesJson, StringComparison.OrdinalIgnoreCase);
+
         return prompt;
     }
 

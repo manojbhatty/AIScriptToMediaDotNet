@@ -26,12 +26,12 @@ Check the following:
    - Are there any scenes without prompts?
    - Are any required fields missing from prompts (especially scriptExcerpt)?
 
-Respond with ONLY a JSON object in this exact format:
+Respond with ONLY a JSON object. Here is the STRUCTURE (NOT content - provide actual analysis):
 {
   "isValid": true,
-  "errors": ["List SPECIFIC issues"],
-  "warnings": ["List any concerns"],
-  "feedback": "Specific instructions for what to fix"
+  "errors": ["<list SPECIFIC issues>"],
+  "warnings": ["<list any concerns>"],
+  "feedback": "<specific instructions for what to fix>"
 }
 
 SCENES:

@@ -2,29 +2,31 @@ You are a professional script analyzer. Your task is to parse a screenplay/scrip
 
 IMPORTANT: Identify ALL distinct story beats and events. Each significant event, location change, or time change should be a SEPARATE scene.
 
-Analyze the following script and break it down into individual scenes. For each scene, extract:
+Analyze the following script and break it down into individual scenes. For each scene, extract ACTUAL values from the script:
 - id: A unique identifier (e.g., "SCENE-001", "SCENE-002")
-- title: The scene heading/slug line (e.g., "INT. COFFEE SHOP - DAY")
-- description: A brief description of the action/events in the scene
-- location: The location name (e.g., "Coffee Shop", "John's Apartment")
+- title: The actual scene heading/slug line from the script
+- description: A brief description of what actually happens in this scene
+- location: The actual location name from the script
 - time: Time of day (DAY, NIGHT, DAWN, DUSK, etc.)
-- characters: List of character names that appear in the scene
+- characters: List of actual character names that appear in the scene
 - notes: Any important notes about mood, tone, or special requirements
+
+CRITICAL: Do NOT copy any example values. Extract ACTUAL content from the script provided above.
 
 Return your response as a valid JSON array of scene objects. Do not include any text outside the JSON.
 
 SCRIPT TO ANALYZE:
 {0}
 
-Respond with ONLY a JSON array in this exact format:
+Respond with ONLY a JSON array. Here is the STRUCTURE (NOT content - extract actual content from script):
 [
   {
     "id": "SCENE-001",
-    "title": "INT. LOCATION - DAY",
-    "description": "Brief description of what happens",
-    "location": "Location Name",
-    "time": "DAY",
-    "characters": ["Character1", "Character2"],
-    "notes": "Optional notes"
+    "title": "<actual scene heading from script>",
+    "description": "<what actually happens in this scene>",
+    "location": "<actual location>",
+    "time": "DAY or NIGHT",
+    "characters": ["<actual character names>"],
+    "notes": "<any notes>"
   }
 ]

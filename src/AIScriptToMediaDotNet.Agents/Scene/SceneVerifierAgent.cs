@@ -107,23 +107,33 @@ public class SceneVerifierAgent : VerifierAgent<List<SceneModel>>
         // Extract JSON from markdown code blocks if present
         var json = ExtractJsonFromMarkdown(response);
 
-        var options = new JsonSerializerOptions
+        try
         {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip
-        };
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                ReadCommentHandling = JsonCommentHandling.Skip
+            };
 
-        var validationResult = JsonSerializer.Deserialize<ValidationResultDto>(json, options)
-            ?? throw new JsonException("Failed to deserialize validation result from JSON");
+            var validationResult = JsonSerializer.Deserialize<ValidationResultDto>(json, options)
+                ?? throw new JsonException("Failed to deserialize validation result from JSON - null result");
 
-        // Convert DTO to domain model
-        return new ValidationResult
+            // Convert DTO to domain model
+            return new ValidationResult
+            {
+                IsValid = validationResult.IsValid,
+                Errors = validationResult.Errors ?? new List<string>(),
+                Warnings = validationResult.Warnings ?? new List<string>(),
+                Feedback = validationResult.Feedback
+            };
+        }
+        catch (JsonException ex)
         {
-            IsValid = validationResult.IsValid,
-            Errors = validationResult.Errors ?? new List<string>(),
-            Warnings = validationResult.Warnings ?? new List<string>(),
-            Feedback = validationResult.Feedback
-        };
+            // Log the problematic JSON for debugging
+            _logger.LogError(ex, "JSON parsing failed. Problematic JSON:\n{Json}", 
+                json.Length > 2000 ? json.Substring(0, 2000) + $"... ({json.Length - 2000} more chars)" : json);
+            throw;
+        }
     }
 
     /// <summary>

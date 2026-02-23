@@ -113,31 +113,41 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
         // Extract JSON from markdown code blocks if present
         var json = ExtractJsonFromMarkdown(response);
         
-        var options = new JsonSerializerOptions
+        try
         {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip
-        };
-
-        var scenes = JsonSerializer.Deserialize<List<SceneModel>>(json, options)
-            ?? throw new JsonException("Failed to deserialize scenes from JSON");
-
-        // Validate and assign default IDs if missing
-        for (int i = 0; i < scenes.Count; i++)
-        {
-            var scene = scenes[i];
-            if (string.IsNullOrEmpty(scene.Id))
+            var options = new JsonSerializerOptions
             {
-                scene.Id = $"SCENE-{(i + 1):D3}";
-            }
-            if (string.IsNullOrEmpty(scene.Time))
+                PropertyNameCaseInsensitive = true,
+                ReadCommentHandling = JsonCommentHandling.Skip
+            };
+
+            var scenes = JsonSerializer.Deserialize<List<SceneModel>>(json, options)
+                ?? throw new JsonException("Failed to deserialize scenes from JSON - null result");
+
+            // Validate and assign default IDs if missing
+            for (int i = 0; i < scenes.Count; i++)
             {
-                scene.Time = "DAY"; // Default
+                var scene = scenes[i];
+                if (string.IsNullOrEmpty(scene.Id))
+                {
+                    scene.Id = $"SCENE-{(i + 1):D3}";
+                }
+                if (string.IsNullOrEmpty(scene.Time))
+                {
+                    scene.Time = "DAY"; // Default
+                }
             }
+
+            _logger.LogDebug("Successfully parsed {Count} scenes", scenes.Count);
+            return scenes;
         }
-
-        _logger.LogDebug("Successfully parsed {Count} scenes", scenes.Count);
-        return scenes;
+        catch (JsonException ex)
+        {
+            // Log the problematic JSON for debugging
+            _logger.LogError(ex, "JSON parsing failed. Problematic JSON:\n{Json}", 
+                json.Length > 2000 ? json.Substring(0, 2000) + $"... ({json.Length - 2000} more chars)" : json);
+            throw;
+        }
     }
 
     /// <summary>

@@ -14,7 +14,7 @@ Return your response as a valid JSON array of video prompt objects. Each scene s
 SCENES TO CONVERT:
 {0}
 
-Respond with ONLY a JSON array in this exact format:
+Respond with ONLY a JSON array. Here is the STRUCTURE (NOT content - generate actual content from scenes):
 [
   {
     "id": "VPROMPT-001",

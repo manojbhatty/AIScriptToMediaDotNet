@@ -63,7 +63,7 @@ ollama serve
 ```bash
 # General purpose model (for parsing, creation, verification agents)
 # Configure model name in appsettings.json (Ollama:DefaultModel)
-ollama pull granite3.3:2b
+ollama pull qwen3:latest
 
 # Alternative (smaller, faster)
 ollama pull mistral
@@ -77,7 +77,7 @@ ollama pull mixtral
 ollama list
 # Should show installed models
 
-ollama run granite3.3:2b "Hello, world!"
+ollama run qwen3:latest "Hello, world!"
 # Should return AI response (use model configured in appsettings.json)
 ```
 
@@ -122,18 +122,18 @@ The `appsettings.json` file is located in `src/AIScriptToMediaDotNet.App/`:
 {
   "Ollama": {
     "Endpoint": "http://localhost:11434",
-    "DefaultModel": "granite3.3:2b",
+    "DefaultModel": "qwen3:latest",
     "TimeoutSeconds": 120,
     "MaxRetries": 3,
     "RetryDelaySeconds": 2,
     "AgentModels": {
-      "DefaultModel": "granite3.3:2b",
-      "SceneParser": "granite3.3:2b",
-      "SceneVerifier": "granite3.3:2b",
-      "PhotoPromptCreator": "granite3.3:2b",
-      "PhotoPromptVerifier": "granite3.3:2b",
-      "VideoPromptCreator": "granite3.3:2b",
-      "VideoPromptVerifier": "granite3.3:2b"
+      "DefaultModel": "qwen3:latest",
+      "SceneParser": "qwen3:latest",
+      "SceneVerifier": "qwen3:latest",
+      "PhotoPromptCreator": "qwen3:latest",
+      "PhotoPromptVerifier": "qwen3:latest",
+      "VideoPromptCreator": "qwen3:latest",
+      "VideoPromptVerifier": "qwen3:latest"
     }
   },
   "Logging": {
@@ -146,7 +146,7 @@ The `appsettings.json` file is located in `src/AIScriptToMediaDotNet.App/`:
 }
 ```
 
-> **Note**: Model names are configurable. Replace `granite3.3:2b` with your preferred model (e.g., `llama3.1`, `mistral`, `mixtral`).
+> **Note**: Model names are configurable. Replace `qwen3:latest` with your preferred model (e.g., `llama3.1`, `mistral`, `mixtral`).
 
 ### Environment Variables (Alternative)
 
@@ -344,7 +344,7 @@ set DOTNET_LOGGING__CONSOLE__LOGLEVEL=Debug     # Windows
 ```bash
 # Check which model is configured in appsettings.json
 # Then pull that model:
-ollama pull granite3.3:2b
+ollama pull qwen3:latest
 ```
 
 ---
@@ -447,8 +447,8 @@ start ./output/images
 | Use Case | Recommended Model |
 |----------|-------------------|
 | Fast iteration | `mistral`, `phi3` |
-| Best quality | Configure in `appsettings.json` (e.g., `granite3.3:2b`, `mixtral`) |
-| Balanced | Configure in `appsettings.json` (e.g., `granite3.3:2b`) |
+| Best quality | Configure in `appsettings.json` (e.g., `qwen3:latest`, `mixtral`) |
+| Balanced | Configure in `appsettings.json` (e.g., `qwen3:latest`) |
 
 ---
 

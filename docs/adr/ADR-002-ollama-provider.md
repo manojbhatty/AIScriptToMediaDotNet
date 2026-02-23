@@ -198,7 +198,7 @@ If preferred model unavailable, configure fallback in `appsettings.json`:
 ```json
 {
   "Ollama": {
-    "DefaultModel": "granite3.3:2b",
+    "DefaultModel": "qwen3:latest",
     "AgentModels": {
       "DefaultModel": "mistral"
     }

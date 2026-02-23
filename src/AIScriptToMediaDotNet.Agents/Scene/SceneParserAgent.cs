@@ -99,8 +99,8 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     /// <returns>The prompt to send to the AI.</returns>
     protected override string BuildPrompt(string script)
     {
-        // Replace {0} placeholder with the script text
-        return _prompts.SceneParserPrompt.Replace("{0}", script, StringComparison.OrdinalIgnoreCase);
+        // Replace {{0}} placeholder with the script text
+        return _prompts.SceneParserPrompt.Replace("{{0}}", script, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

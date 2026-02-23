@@ -94,7 +94,8 @@ public class SceneVerifierAgent : VerifierAgent<List<SceneModel>>
     {
         var scenesJson = JsonSerializer.Serialize(scenes, new JsonSerializerOptions { WriteIndented = true });
         
-        return string.Format(_prompts.SceneVerifierPrompt, scenesJson);
+        // Replace {{0}} placeholder with the scenes JSON
+        return _prompts.SceneVerifierPrompt.Replace("{{0}}", scenesJson, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

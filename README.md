@@ -38,13 +38,15 @@ Creates a folder named `{Title}_{YYYY-MM-DD_HH-mm-ss}` containing:
 
 ### Agent Log
 
-The `agent-log.md` file captures:
+The `agent-log.md` and `execution-log.md` files capture:
 - Each agent's execution timestamp
 - Input/output summaries
 - Retry attempts with reasons
 - Feedback messages between verifier and creator agents
 - Validation errors and corrections
 - Final decisions at each stage
+- Configuration snapshot for reproduction
+- Full stack traces for errors
 
 ## Architecture
 

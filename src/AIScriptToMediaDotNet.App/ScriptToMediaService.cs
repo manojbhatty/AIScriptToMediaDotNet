@@ -6,6 +6,8 @@ using AIScriptToMediaDotNet.Core.Orchestration;
 using AIScriptToMediaDotNet.Core.Prompts;
 using Microsoft.Extensions.Logging;
 
+using SceneModel = AIScriptToMediaDotNet.Core.Context.Scene;
+using SceneParserInput = AIScriptToMediaDotNet.Agents.Scene.SceneParserInput;
 using SceneVerificationInput = AIScriptToMediaDotNet.Agents.Scene.SceneVerificationInput;
 
 namespace AIScriptToMediaDotNet.App;
@@ -82,11 +84,11 @@ public class ScriptToMediaService
 
             // Stage 1: Scene Parsing
             _logger.LogInformation("Stage 1: Parsing scenes...");
-            var parsed = await _orchestrator.ExecuteStageAsync(
+            var parsed = await _orchestrator.ExecuteStageAsync<SceneParserInput, List<SceneModel>>(
                 context,
                 "SceneParsing",
                 _sceneParser,
-                ctx => ctx.OriginalScript,
+                ctx => new SceneParserInput { Script = ctx.OriginalScript },
                 (ctx, scenes) => ctx.Scenes = scenes,
                 cancellationToken,
                 _executionContext);

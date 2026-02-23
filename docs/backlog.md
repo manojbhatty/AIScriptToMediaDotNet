@@ -411,11 +411,11 @@ flowchart TB
 ---
 
 ### [EXT-005] Human-in-the-Loop Approval
-**Priority**: P2  
+**Priority**: P2
 **Status**: Future
 
-**As a** creative controller  
-**I want** to review and approve outputs at each stage  
+**As a** creative controller
+**I want** to review and approve outputs at each stage
 **So that** I maintain creative control
 
 **Acceptance Criteria**:
@@ -426,15 +426,33 @@ flowchart TB
 
 ---
 
-## Current Sprint / Focus
+### [EXT-006] Verify Logging
+**Priority**: P0
+**Status**: Todo
+**GitHub**: [#34](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/34)
 
-**Active**: CORE-002, CORE-003, CORE-004 (Core abstractions)
+**As a** developer/debugger
+**I want** detailed error logs and success logs for each pipeline run
+**So that** I can debug issues and understand agent behavior
+
+**Acceptance Criteria**:
+- [ ] Error logs with detailed information (inputs, agent responses, stack traces, failure stages)
+- [ ] Success logs with concise inputs and outputs for each agent
+- [ ] Logs should include all information needed to recreate issues
+- [ ] Logs should allow understanding why an agent behaved the way it did
 
 ---
 
-## Completed
+## Current Sprint / Focus
 
-- [CORE-001] Project Scaffolding ✅
+**Active**: SCENE-001 (Scene Parser Agent - Implementation Complete, PR Open)
+
+**Completed**:
+- CORE-002: AI Provider Abstraction ✅
+- CORE-003: Agent Abstraction ✅
+- CORE-004: Shared Context Object ✅
+- CORE-005: Orchestrator Implementation ✅
+- SCENE-001: Scene Parser Agent ✅
 
 ---
 

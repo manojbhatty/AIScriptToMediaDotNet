@@ -29,6 +29,10 @@ public static class MarkdownExporter
         var scenesPath = Path.Combine(outputFolder, "scenes.md");
         File.WriteAllText(scenesPath, ExportScenes(context.Scenes));
 
+        // Export photo prompts
+        var photoPromptsPath = Path.Combine(outputFolder, "photo-prompts.md");
+        File.WriteAllText(photoPromptsPath, ExportPhotoPrompts(context.PhotoPrompts));
+
         // Export agent log
         var logPath = Path.Combine(outputFolder, "agent-log.md");
         File.WriteAllText(logPath, ExportAgentLog(context));
@@ -60,6 +64,54 @@ public static class MarkdownExporter
             }
 
             md.AppendLine("---\n");
+        }
+
+        return md.ToString();
+    }
+
+    /// <summary>
+    /// Exports photo prompts to markdown format.
+    /// </summary>
+    /// <param name="photoPrompts">The list of photo prompts.</param>
+    /// <returns>Markdown formatted photo prompts.</returns>
+    private static string ExportPhotoPrompts(List<PhotoPrompt> photoPrompts)
+    {
+        var md = new System.Text.StringBuilder();
+        md.AppendLine("# Photo Prompts\n\n");
+        md.AppendLine($"**Total Prompts:** {photoPrompts.Count}\n\n");
+
+        // Group by scene
+        var promptsByScene = photoPrompts.GroupBy(p => p.SceneId).OrderBy(g => g.Key);
+
+        foreach (var sceneGroup in promptsByScene)
+        {
+            md.AppendLine($"## Scene {sceneGroup.Key}\n\n");
+
+            foreach (var prompt in sceneGroup)
+            {
+                md.AppendLine($"### {prompt.Id}\n\n");
+                md.AppendLine($"**Full Prompt:**\n\n{prompt.Prompt}\n\n");
+                
+                md.AppendLine("**Details:**\n\n");
+                md.AppendLine($"- **Subject:** {prompt.Subject}\n");
+                md.AppendLine($"- **Style:** {prompt.Style}\n");
+                md.AppendLine($"- **Lighting:** {prompt.Lighting}\n");
+                md.AppendLine($"- **Composition:** {prompt.Composition}\n");
+                md.AppendLine($"- **Mood:** {prompt.Mood}\n");
+                md.AppendLine($"- **Camera:** {prompt.Camera}\n");
+
+                if (!string.IsNullOrEmpty(prompt.ScriptExcerpt))
+                {
+                    md.AppendLine($"- **Script Excerpt:** {prompt.ScriptExcerpt}\n");
+                }
+
+                if (!string.IsNullOrEmpty(prompt.NegativePrompt))
+                {
+                    md.AppendLine($"- **Negative Prompt:** {prompt.NegativePrompt}\n");
+                }
+
+                md.AppendLine("---\n\n");
+            }
         }
 
         return md.ToString();

@@ -132,13 +132,36 @@ public class SceneVerifierAgent : VerifierAgent<SceneVerificationInput>
                 ?? throw new JsonException("Failed to deserialize validation result from JSON - null result");
 
             // Convert DTO to domain model
-            return new ValidationResult
+            var result = new ValidationResult
             {
                 IsValid = validationResult.IsValid,
                 Errors = validationResult.Errors ?? new List<string>(),
                 Warnings = validationResult.Warnings ?? new List<string>(),
                 Feedback = validationResult.Feedback
             };
+
+            // If there are significant warnings about missing story elements, mark as invalid
+            // This ensures the SceneParser gets another chance to create more complete scenes
+            if (result.Warnings.Any())
+            {
+                // Check if warnings indicate missing story beats
+                var hasMissingContentWarning = result.Warnings.Any(w => 
+                    w.Contains("missing", StringComparison.OrdinalIgnoreCase) ||
+                    w.Contains("not fully captured", StringComparison.OrdinalIgnoreCase) ||
+                    w.Contains("incomplete", StringComparison.OrdinalIgnoreCase) ||
+                    w.Contains("should be created", StringComparison.OrdinalIgnoreCase) ||
+                    w.Contains("split", StringComparison.OrdinalIgnoreCase) ||
+                    w.Contains("separate scenes", StringComparison.OrdinalIgnoreCase));
+                
+                if (hasMissingContentWarning)
+                {
+                    result.IsValid = false;
+                    result.Errors.AddRange(result.Warnings.Select(w => $"Missing content: {w}"));
+                    _logger.LogWarning("Scene verification downgraded to INVALID due to missing content warnings");
+                }
+            }
+
+            return result;
         }
         catch (JsonException ex)
         {

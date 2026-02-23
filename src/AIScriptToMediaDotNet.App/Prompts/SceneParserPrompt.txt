@@ -11,7 +11,7 @@ Analyze the following script and break it down into individual scenes. For each 
 - characters: List of actual character names that appear in the scene
 - notes: Any important notes about mood, tone, or special requirements
 
-CRITICAL: Do NOT copy the example values below. Extract ACTUAL content from the script provided.
+CRITICAL: Do NOT copy any example values. Extract ACTUAL content from the script provided above.
 
 Return your response as a valid JSON array of scene objects. Do not include any text outside the JSON.
 

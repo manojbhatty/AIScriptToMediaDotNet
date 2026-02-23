@@ -44,8 +44,17 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
         {
             _logger.LogInformation("Starting scene parsing for script ({Length} chars)", script.Length);
 
-            // Invoke AI and parse response
-            var scenes = await CreateAsync(script, cancellationToken);
+            // Build the prompt
+            var prompt = BuildPrompt(script);
+            _logger.LogInformation("Generated prompt ({Length} chars)", prompt.Length);
+            _logger.LogDebug("Prompt preview: {Preview}", prompt.Length > 500 ? prompt.Substring(0, 500) + "..." : prompt);
+
+            // Invoke AI
+            var response = await InvokeAIAsync(prompt, cancellationToken);
+            _logger.LogInformation("Received AI response ({Length} chars)", response.Length);
+
+            // Parse the response
+            var scenes = ParseResponse(response);
             _logger.LogInformation("Parsed {SceneCount} scenes", scenes.Count);
 
             stopwatch.Stop();
@@ -75,11 +84,9 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     {
         // Build the prompt
         var prompt = BuildPrompt(script);
-        _logger.LogDebug("Generated prompt ({Length} chars)", prompt.Length);
 
         // Invoke AI
         var response = await InvokeAIAsync(prompt, cancellationToken);
-        _logger.LogDebug("Received AI response ({Length} chars)", response.Length);
 
         // Parse the response
         return ParseResponse(response);
@@ -103,9 +110,9 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     /// <returns>The parsed list of scenes.</returns>
     protected override List<SceneModel> ParseResponse(string response)
     {
-        // Try to extract JSON array from response
-        var json = ExtractJsonArray(response);
-
+        // Extract JSON from markdown code blocks if present
+        var json = ExtractJsonFromMarkdown(response);
+        
         var options = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -131,6 +138,39 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
 
         _logger.LogDebug("Successfully parsed {Count} scenes", scenes.Count);
         return scenes;
+    }
+
+    /// <summary>
+    /// Extracts JSON array from markdown code blocks.
+    /// </summary>
+    /// <param name="response">The AI response text.</param>
+    /// <returns>The extracted JSON string.</returns>
+    private static string ExtractJsonFromMarkdown(string response)
+    {
+        // Look for ```json or ``` followed by [
+        var startIndex = response.IndexOf("```json", StringComparison.OrdinalIgnoreCase);
+        if (startIndex == -1)
+        {
+            startIndex = response.IndexOf("```", StringComparison.OrdinalIgnoreCase);
+        }
+        
+        if (startIndex >= 0)
+        {
+            // Find the opening bracket after the code block marker
+            var bracketStart = response.IndexOf('[', startIndex);
+            if (bracketStart >= 0)
+            {
+                // Find the matching closing bracket
+                var bracketEnd = response.LastIndexOf(']');
+                if (bracketEnd > bracketStart)
+                {
+                    return response.Substring(bracketStart, bracketEnd - bracketStart + 1);
+                }
+            }
+        }
+        
+        // If no markdown blocks, try to extract JSON array directly
+        return ExtractJsonArray(response);
     }
 
     /// <summary>

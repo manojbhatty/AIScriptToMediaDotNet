@@ -1,0 +1,3 @@
+# Untitled
+
+FADE IN: INT. COFFEE SHOP - DAY

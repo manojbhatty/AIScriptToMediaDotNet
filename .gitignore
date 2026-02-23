@@ -361,6 +361,4 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd"output/"  
-output/Untitled_2026-02-23_01-58-49/agent-log.md
-output/Untitled_2026-02-23_01-58-49/scenes.md
-output/Untitled_2026-02-23_01-58-49/script.md
+output/

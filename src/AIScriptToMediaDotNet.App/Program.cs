@@ -251,7 +251,13 @@ internal class Program
         services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AgentPrompts>>().Value);
 
         // Add agents
-        services.AddScoped<SceneParserAgent>();
+        services.AddScoped<SceneParserAgent>(sp =>
+        {
+            var aiProvider = sp.GetRequiredService<IAIProvider>();
+            var logger = sp.GetRequiredService<ILogger<SceneParserAgent>>();
+            var prompts = sp.GetRequiredService<AgentPrompts>();
+            return new SceneParserAgent(aiProvider, logger, prompts);
+        });
 
         // Add orchestrator
         services.AddSingleton<PipelineOrchestrator>(sp =>

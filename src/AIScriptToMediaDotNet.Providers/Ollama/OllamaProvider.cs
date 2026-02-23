@@ -26,7 +26,7 @@ public class OllamaProvider : IAIProvider
     /// </summary>
     public OllamaProvider(
         HttpClient httpClient,
-        IOptions<OllamaOptions> options,
+        Microsoft.Extensions.Options.IOptionsSnapshot<OllamaOptions> options,
         ILogger<OllamaProvider> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
@@ -59,7 +59,7 @@ public class OllamaProvider : IAIProvider
         {
             try
             {
-                _logger.LogDebug(
+                _logger.LogInformation(
                     "Generating response with model '{Model}' (attempt {Attempt}/{MaxRetries})",
                     model, attempt, maxRetries);
 
@@ -77,6 +77,8 @@ public class OllamaProvider : IAIProvider
                     }
                 };
 
+                _logger.LogDebug("Sending request to {Url} with model {Model}", "api/generate", model);
+
                 var response = await _httpClient.PostAsJsonAsync(
                     $"{_options.Endpoint}/api/generate",
                     request,
@@ -85,15 +87,24 @@ public class OllamaProvider : IAIProvider
                 response.EnsureSuccessStatusCode();
 
                 var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                
+                _logger.LogDebug("Raw Ollama response: {Response}", responseContent.Length > 500 ? responseContent.Substring(0, 500) + "..." : responseContent);
+                
                 var ollamaResponse = JsonSerializer.Deserialize<OllamaResponse>(responseContent);
 
                 if (ollamaResponse?.Response != null)
                 {
-                    _logger.LogDebug("Successfully generated response ({Length} chars)",
+                    _logger.LogInformation("Successfully generated response ({Length} chars)",
                         ollamaResponse.Response.Length);
+                    
+                    // Log first 200 chars for debugging
+                    var previewLength = Math.Min(200, ollamaResponse.Response.Length);
+                    _logger.LogDebug("Response preview: {Preview}", ollamaResponse.Response.Substring(0, previewLength));
+                    
                     return ollamaResponse.Response;
                 }
 
+                _logger.LogWarning("Empty response from Ollama. Full response: {Response}", responseContent);
                 throw new InvalidOperationException("Empty response from Ollama");
             }
             catch (HttpRequestException ex) when (attempt < maxRetries)
@@ -148,8 +159,13 @@ public class OllamaProvider : IAIProvider
 
     private class OllamaResponse
     {
+        [System.Text.Json.Serialization.JsonPropertyName("model")]
         public string Model { get; set; } = "";
+        
+        [System.Text.Json.Serialization.JsonPropertyName("response")]
         public string Response { get; set; } = "";
+        
+        [System.Text.Json.Serialization.JsonPropertyName("done")]
         public bool Done { get; set; }
     }
 

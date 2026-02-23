@@ -166,8 +166,9 @@ internal class Program
     private static async Task RunPipelineMode(AppOptions options)
     {
         // Build configuration
+        var appPath = AppContext.BaseDirectory;
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
+            .SetBasePath(appPath)
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables()
             .Build();
@@ -236,7 +237,7 @@ internal class Program
         services.AddLogging(builder =>
         {
             builder.AddConsole();
-            builder.SetMinimumLevel(LogLevel.Information);
+            builder.SetMinimumLevel(LogLevel.Debug);
         });
 
         // Add Ollama AI provider
@@ -250,7 +251,13 @@ internal class Program
         services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AgentPrompts>>().Value);
 
         // Add agents
-        services.AddScoped<SceneParserAgent>();
+        services.AddScoped<SceneParserAgent>(sp =>
+        {
+            var aiProvider = sp.GetRequiredService<IAIProvider>();
+            var logger = sp.GetRequiredService<ILogger<SceneParserAgent>>();
+            var prompts = sp.GetRequiredService<AgentPrompts>();
+            return new SceneParserAgent(aiProvider, logger, prompts);
+        });
 
         // Add orchestrator
         services.AddSingleton<PipelineOrchestrator>(sp =>

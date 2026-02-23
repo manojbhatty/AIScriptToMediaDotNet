@@ -3,6 +3,7 @@ using AIScriptToMediaDotNet.Agents.Base;
 using AIScriptToMediaDotNet.Core.Agents;
 using AIScriptToMediaDotNet.Core.Context;
 using AIScriptToMediaDotNet.Core.Interfaces;
+using AIScriptToMediaDotNet.Core.Prompts;
 using Microsoft.Extensions.Logging;
 
 using SceneModel = AIScriptToMediaDotNet.Core.Context.Scene;
@@ -14,6 +15,8 @@ namespace AIScriptToMediaDotNet.Agents.Scene;
 /// </summary>
 public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
 {
+    private readonly AgentPrompts _prompts;
+
     /// <inheritdoc />
     public override string Name => "SceneParser";
 
@@ -25,9 +28,11 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     /// </summary>
     /// <param name="aiProvider">The AI provider to use.</param>
     /// <param name="logger">The logger instance.</param>
-    public SceneParserAgent(IAIProvider aiProvider, ILogger<SceneParserAgent> logger)
+    /// <param name="prompts">The prompt templates configuration.</param>
+    public SceneParserAgent(IAIProvider aiProvider, ILogger<SceneParserAgent> logger, AgentPrompts? prompts = null)
         : base(aiProvider, logger)
     {
+        _prompts = prompts ?? new AgentPrompts();
     }
 
     /// <inheritdoc />
@@ -87,34 +92,7 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     /// <returns>The prompt to send to the AI.</returns>
     protected override string BuildPrompt(string script)
     {
-        return string.Format(@"You are a professional script analyzer. Your task is to parse a screenplay/script into discrete scenes.
-
-Analyze the following script and break it down into individual scenes. For each scene, extract:
-- id: A unique identifier (e.g., ""SCENE-001"", ""SCENE-002"")
-- title: The scene heading/slug line (e.g., ""INT. COFFEE SHOP - DAY"")
-- description: A brief description of the action/events in the scene
-- location: The location name (e.g., ""Coffee Shop"", ""John's Apartment"")
-- time: Time of day (DAY, NIGHT, DAWN, DUSK, etc.)
-- characters: List of character names that appear in the scene
-- notes: Any important notes about mood, tone, or special requirements
-
-Return your response as a valid JSON array of scene objects. Do not include any text outside the JSON.
-
-SCRIPT TO ANALYZE:
-{0}
-
-Respond with ONLY a JSON array in this exact format:
-[
-  {{
-    ""id"": ""SCENE-001"",
-    ""title"": ""INT. LOCATION - DAY"",
-    ""description"": ""Brief description of what happens"",
-    ""location"": ""Location Name"",
-    ""time"": ""DAY"",
-    ""characters"": [""Character1"", ""Character2""],
-    ""notes"": ""Optional notes""
-  }}
-]", script);
+        return string.Format(_prompts.SceneParserPrompt, script);
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 ﻿using AIScriptToMediaDotNet.Core.Interfaces;
 using AIScriptToMediaDotNet.Core.Options;
+using AIScriptToMediaDotNet.Core.Prompts;
 using AIScriptToMediaDotNet.Providers.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,10 @@ internal class Program
         {
             configuration.GetSection("Ollama").Bind(options);
         });
+
+        // Configure agent prompts from settings
+        services.Configure<AgentPrompts>(configuration.GetSection("AgentPrompts"));
+        services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AgentPrompts>>().Value);
 
         // Add HTTP client factory
         services.AddHttpClient();

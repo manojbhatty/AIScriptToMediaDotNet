@@ -1,5 +1,6 @@
 using AIScriptToMediaDotNet.Core.Agents;
 using AIScriptToMediaDotNet.Core.Context;
+using AIScriptToMediaDotNet.Core.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace AIScriptToMediaDotNet.Core.Orchestration;
@@ -37,6 +38,7 @@ public class PipelineOrchestrator
     /// <param name="inputProvider">Function to provide input from context.</param>
     /// <param name="outputConsumer">Action to consume output and update context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="executionContext">Optional execution context for detailed logging.</param>
     /// <returns>True if the stage completed successfully, false otherwise.</returns>
     public async Task<bool> ExecuteStageAsync<TInput, TOutput>(
         ScriptToMediaContext context,
@@ -44,10 +46,12 @@ public class PipelineOrchestrator
         IAgent<TInput, TOutput> agent,
         Func<ScriptToMediaContext, TInput> inputProvider,
         Action<ScriptToMediaContext, TOutput> outputConsumer,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        PipelineExecutionContext? executionContext = null)
     {
         _logger.LogInformation("Starting stage: {StageName} (Agent: {AgentName})", stageName, agent.Name);
         context.MarkStageStarted(stageName);
+        executionContext?.LogAgentStart(agent.Name, stageName, $"Stage: {stageName}");
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var attempt = 0;
@@ -70,6 +74,7 @@ public class PipelineOrchestrator
                 if (!string.IsNullOrEmpty(feedback))
                 {
                     _logger.LogDebug("Using feedback from previous attempt: {Feedback}", feedback);
+                    executionContext?.LogAgentRetry(agent.Name, stageName, attempt, feedback);
                 }
 
                 // Execute the agent
@@ -81,6 +86,8 @@ public class PipelineOrchestrator
                     // Consume the output and update context
                     outputConsumer(context, result.Data!);
                     context.MarkStageComplete(stageName, result.ExecutionTime);
+                    executionContext?.LogAgentComplete(agent.Name, stageName, 
+                        result.Data?.ToString() ?? "Success", (long)result.ExecutionTime.TotalMilliseconds);
 
                     _logger.LogInformation(
                         "Stage {StageName} completed successfully in {ElapsedMs}ms (Attempt {Attempt})",
@@ -92,6 +99,8 @@ public class PipelineOrchestrator
                 // Stage failed - store errors and feedback for retry
                 feedback = result.Metadata.TryGetValue("Feedback", out var fb) ? fb?.ToString() : null;
                 context.MarkStageFailed(stageName, result.Errors, feedback);
+                executionContext?.LogAgentError(agent.Name, stageName, 
+                    string.Join("; ", result.Errors), null, input?.ToString());
 
                 _logger.LogWarning(
                     "Stage {StageName} failed (Attempt {Attempt}/{MaxRetries}): {Errors}",
@@ -106,12 +115,14 @@ public class PipelineOrchestrator
             {
                 stopwatch.Stop();
                 _logger.LogInformation("Stage {StageName} cancelled", stageName);
+                executionContext?.LogAgentError(agent.Name, stageName, "Cancelled", null);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
                 context.MarkStageFailed(stageName, new[] { ex.Message }, null);
+                executionContext?.LogAgentError(agent.Name, stageName, ex.Message, ex.StackTrace);
 
                 _logger.LogError(ex, "Stage {StageName} threw exception (Attempt {Attempt}/{MaxRetries})",
                     stageName, attempt, _maxRetriesPerStage);
@@ -134,6 +145,8 @@ public class PipelineOrchestrator
         context.MarkStageFailed(stageName,
             new[] { $"Stage failed after {_maxRetriesPerStage} attempts" },
             null);
+        executionContext?.LogAgentError(agent.Name, stageName, 
+            $"Stage failed after {_maxRetriesPerStage} attempts", null);
 
         return false;
     }

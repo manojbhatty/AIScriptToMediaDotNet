@@ -342,6 +342,7 @@ public class ScriptToMediaService
                 md.AppendLine($"**Time:** {error.Timestamp:yyyy-MM-dd HH:mm:ss}\n\n");
                 md.AppendLine($"**Event:** {error.Event}\n\n");
                 md.AppendLine($"**Message:** {error.Message}\n\n");
+                
                 if (!string.IsNullOrEmpty(error.ErrorDetails))
                 {
                     md.AppendLine("**Error Details:**\n\n");
@@ -349,16 +350,52 @@ public class ScriptToMediaService
                     md.AppendLine(error.ErrorDetails);
                     md.AppendLine("```\n\n");
                 }
-                if (!string.IsNullOrEmpty(error.InputSummary))
+                
+                // Add input information
+                if (!string.IsNullOrEmpty(error.InputSummary) || !string.IsNullOrEmpty(error.InputData))
                 {
                     md.AppendLine("**Input:**\n\n");
-                    md.AppendLine("```\n");
-                    md.AppendLine(error.InputSummary);
-                    md.AppendLine("```\n\n");
+                    if (!string.IsNullOrEmpty(error.InputSummary))
+                    {
+                        md.AppendLine("```\n");
+                        md.AppendLine(error.InputSummary);
+                        md.AppendLine("```\n\n");
+                    }
+                    if (!string.IsNullOrEmpty(error.InputData))
+                    {
+                        md.AppendLine("**Input Data (JSON):**\n\n");
+                        md.AppendLine("```json\n");
+                        md.AppendLine(error.InputData);
+                        md.AppendLine("```\n\n");
+                    }
                 }
+                
+                // Add output information (if available - e.g., verifier output before failure)
+                if (!string.IsNullOrEmpty(error.OutputSummary) || !string.IsNullOrEmpty(error.OutputData))
+                {
+                    md.AppendLine("**Output:**\n\n");
+                    if (!string.IsNullOrEmpty(error.OutputSummary))
+                    {
+                        md.AppendLine("```\n");
+                        md.AppendLine(error.OutputSummary);
+                        md.AppendLine("```\n\n");
+                    }
+                    if (!string.IsNullOrEmpty(error.OutputData))
+                    {
+                        md.AppendLine("**Output Data (JSON):**\n\n");
+                        md.AppendLine("```json\n");
+                        md.AppendLine(error.OutputData);
+                        md.AppendLine("```\n\n");
+                    }
+                }
+                
                 if (error.RetryCount.HasValue)
                 {
                     md.AppendLine($"**Retry Count:** {error.RetryCount}\n\n");
+                }
+                if (error.ExecutionTimeMs.HasValue)
+                {
+                    md.AppendLine($"**Execution Time:** {error.ExecutionTimeMs}ms\n\n");
                 }
                 md.AppendLine("---\n\n");
             }

@@ -125,18 +125,24 @@ flowchart TB
 ---
 
 ### [CORE-004] Shared Context Object
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#15](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/15)
+**Completed**: 2026-02-23
+**Branch**: `feature/CORE-004-shared-context`
 
-**As a** system designer  
-**I want** a `ScriptToMediaContext` class  
+**As a** system designer
+**I want** a `ScriptToMediaContext` class
 **So that** all agents share consistent state
 
 **Acceptance Criteria**:
-- [ ] Context contains: original script, scenes, photo prompts, video prompts
-- [ ] Context tracks validation errors per stage
-- [ ] Context tracks retry counts per stage
-- [ ] Context is serializable for debugging/logging
+- [x] Context contains: original script, scenes, photo prompts, video prompts
+- [x] Context tracks validation errors per stage via `StageState`
+- [x] Context tracks retry counts per stage
+- [x] Context is serializable for debugging/logging
+- [x] `Scene`, `PhotoPrompt`, `VideoPrompt` model classes
+- [x] Stage state management methods (start, complete, fail, retry)
+- [x] Pipeline status properties (IsComplete, HasFailed, CurrentStage)
 
 ---
 

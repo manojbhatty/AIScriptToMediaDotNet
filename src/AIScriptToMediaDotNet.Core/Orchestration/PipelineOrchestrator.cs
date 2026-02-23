@@ -51,7 +51,6 @@ public class PipelineOrchestrator
     {
         _logger.LogInformation("Starting stage: {StageName} (Agent: {AgentName})", stageName, agent.Name);
         context.MarkStageStarted(stageName);
-        executionContext?.LogAgentStart(agent.Name, stageName, $"Stage: {stageName}");
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var attempt = 0;
@@ -72,6 +71,11 @@ public class PipelineOrchestrator
                 if (lastInput == null)
                 {
                     lastInput = inputProvider(context);
+                    
+                    // Log the start with input data (on first attempt)
+                    var inputJson = PipelineExecutionContext.SerializeToJson(lastInput);
+                    var inputSummary = lastInput?.ToString() ?? "null";
+                    executionContext?.LogAgentStart(agent.Name, stageName, inputSummary, inputJson);
                 }
                 else
                 {
@@ -101,8 +105,13 @@ public class PipelineOrchestrator
                     // Consume the output and update context
                     outputConsumer(context, result.Data!);
                     context.MarkStageComplete(stageName, result.ExecutionTime);
+                    
+                    // Serialize output data for logging
+                    var outputJson = PipelineExecutionContext.SerializeToJson(result.Data);
+                    var outputSummary = result.Data?.ToString() ?? "Success";
+                    
                     executionContext?.LogAgentComplete(agent.Name, stageName,
-                        result.Data?.ToString() ?? "Success", (long)result.ExecutionTime.TotalMilliseconds);
+                        outputSummary, outputJson, (long)result.ExecutionTime.TotalMilliseconds);
 
                     _logger.LogInformation(
                         "Stage {StageName} completed successfully in {ElapsedMs}ms (Attempt {Attempt})",

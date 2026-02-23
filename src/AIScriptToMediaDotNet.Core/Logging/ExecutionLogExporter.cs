@@ -91,11 +91,27 @@ public static class ExecutionLogExporter
                     md.AppendLine("```\n\n");
                 }
 
+                if (!string.IsNullOrEmpty(entry.InputData))
+                {
+                    md.AppendLine("**Input Data (JSON):**\n\n");
+                    md.AppendLine("```json\n");
+                    md.AppendLine(entry.InputData);
+                    md.AppendLine("```\n\n");
+                }
+
                 if (!string.IsNullOrEmpty(entry.OutputSummary))
                 {
                     md.AppendLine("**Output:**\n\n");
                     md.AppendLine("```\n");
                     md.AppendLine(entry.OutputSummary);
+                    md.AppendLine("```\n\n");
+                }
+
+                if (!string.IsNullOrEmpty(entry.OutputData))
+                {
+                    md.AppendLine("**Output Data (JSON):**\n\n");
+                    md.AppendLine("```json\n");
+                    md.AppendLine(entry.OutputData);
                     md.AppendLine("```\n\n");
                 }
 

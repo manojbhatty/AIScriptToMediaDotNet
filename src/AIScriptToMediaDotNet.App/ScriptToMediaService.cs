@@ -133,7 +133,9 @@ public class ScriptToMediaService
             }
 
             _logger.LogInformation("Scenes verified successfully");
-            _executionContext.LogAgentComplete("SceneParser", "SceneParsing", $"{context.Scenes.Count} scenes parsed", 0);
+            _executionContext.LogAgentComplete("SceneVerifier", "SceneVerification", 
+                $"{context.Scenes.Count} scenes verified", 
+                PipelineExecutionContext.SerializeToJson(context.Scenes), 0);
 
             // Log pipeline status
             var status = _orchestrator.GetPipelineStatus(context);

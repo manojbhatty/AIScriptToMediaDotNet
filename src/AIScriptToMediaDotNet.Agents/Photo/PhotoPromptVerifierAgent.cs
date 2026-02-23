@@ -103,11 +103,11 @@ public class PhotoPromptVerifierAgent : VerifierAgent<PhotoPromptVerificationInp
     {
         var scenesJson = JsonSerializer.Serialize(input.Scenes, new JsonSerializerOptions { WriteIndented = true });
         var promptsJson = JsonSerializer.Serialize(input.PhotoPrompts, new JsonSerializerOptions { WriteIndented = true });
-        
-        // Replace {{0}} with scenes and {{1}} with photo prompts
-        var prompt = _prompts.PhotoPromptVerifierPrompt.Replace("{{0}}", scenesJson, StringComparison.OrdinalIgnoreCase);
-        prompt = prompt.Replace("{{1}}", promptsJson, StringComparison.OrdinalIgnoreCase);
-        
+
+        // Replace {0} with scenes and {1} with photo prompts
+        var prompt = _prompts.PhotoPromptVerifierPrompt.Replace("{0}", scenesJson, StringComparison.OrdinalIgnoreCase);
+        prompt = prompt.Replace("{1}", promptsJson, StringComparison.OrdinalIgnoreCase);
+
         return prompt;
     }
 

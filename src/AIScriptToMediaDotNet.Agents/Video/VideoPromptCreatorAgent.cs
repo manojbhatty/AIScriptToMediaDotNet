@@ -114,14 +114,14 @@ public class VideoPromptCreatorAgent : CreatorAgent<VideoPromptCreatorInput, Lis
     protected override string BuildPrompt(VideoPromptCreatorInput input)
     {
         var scenesJson = JsonSerializer.Serialize(input.Scenes, new JsonSerializerOptions { WriteIndented = true });
-        var prompt = _prompts.VideoPromptCreatorPrompt.Replace("{{0}}", scenesJson, StringComparison.OrdinalIgnoreCase);
-        
+        var prompt = _prompts.VideoPromptCreatorPrompt.Replace("{0}", scenesJson, StringComparison.OrdinalIgnoreCase);
+
         // If we have feedback from a previous verification attempt, append it
         if (!string.IsNullOrEmpty(input.Feedback))
         {
             prompt += $"\n\nIMPORTANT FEEDBACK FROM PREVIOUS REVIEW:\n{input.Feedback}\n\nPlease revise your video prompts to address this feedback. Ensure all scenes have detailed prompts with motion, camera movement, duration, and transitions.";
         }
-        
+
         return prompt;
     }
 

@@ -103,11 +103,11 @@ public class VideoPromptVerifierAgent : VerifierAgent<VideoPromptVerificationInp
     {
         var scenesJson = JsonSerializer.Serialize(input.Scenes, new JsonSerializerOptions { WriteIndented = true });
         var promptsJson = JsonSerializer.Serialize(input.VideoPrompts, new JsonSerializerOptions { WriteIndented = true });
-        
-        // Replace {{0}} with scenes and {{1}} with video prompts
-        var prompt = _prompts.VideoPromptVerifierPrompt.Replace("{{0}}", scenesJson, StringComparison.OrdinalIgnoreCase);
-        prompt = prompt.Replace("{{1}}", promptsJson, StringComparison.OrdinalIgnoreCase);
-        
+
+        // Replace {0} with scenes and {1} with video prompts
+        var prompt = _prompts.VideoPromptVerifierPrompt.Replace("{0}", scenesJson, StringComparison.OrdinalIgnoreCase);
+        prompt = prompt.Replace("{1}", promptsJson, StringComparison.OrdinalIgnoreCase);
+
         return prompt;
     }
 

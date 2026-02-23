@@ -141,13 +141,18 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
     }
 
     /// <summary>
-    /// Extracts JSON array from markdown code blocks.
+    /// Extracts JSON array from markdown code blocks or thinking model output.
     /// </summary>
     /// <param name="response">The AI response text.</param>
     /// <returns>The extracted JSON string.</returns>
     private static string ExtractJsonFromMarkdown(string response)
     {
-        // Look for ```json or ``` followed by [
+        if (string.IsNullOrEmpty(response))
+        {
+            throw new JsonException("Empty response from AI");
+        }
+
+        // First, try to find JSON in markdown code blocks (```json or ```)
         var startIndex = response.IndexOf("```json", StringComparison.OrdinalIgnoreCase);
         if (startIndex == -1)
         {
@@ -169,8 +174,20 @@ public class SceneParserAgent : CreatorAgent<string, List<SceneModel>>
             }
         }
         
-        // If no markdown blocks, try to extract JSON array directly
-        return ExtractJsonArray(response);
+        // If no markdown blocks, look for JSON array anywhere in the response
+        // This handles thinking models that output reasoning before JSON
+        var arrayStart = response.IndexOf('[');
+        if (arrayStart >= 0)
+        {
+            var arrayEnd = response.LastIndexOf(']');
+            if (arrayEnd > arrayStart)
+            {
+                return response.Substring(arrayStart, arrayEnd - arrayStart + 1);
+            }
+        }
+        
+        // If still no JSON found, return the whole response and let deserialization fail with clear error
+        return response.Trim();
     }
 
     /// <summary>

@@ -159,6 +159,72 @@ OUTPUT_PATH=./output
 
 ---
 
+## Output Structure
+
+Each pipeline run creates a timestamped folder with detailed logs:
+
+```
+./output/{Title}_{YYYY-MM-DD_HH-mm-ss}/
+├── script.md           # Original script
+├── scenes.md           # Parsed scenes with metadata
+├── agent-log.md        # Agent execution summary
+├── execution-log.md    # Detailed execution log (on success)
+└── error-{id}.md       # Error reference log (on failure)
+```
+
+### execution-log.md (Success)
+
+Detailed execution log including:
+- **Summary**: Execution ID, status, duration, total retries
+- **Configuration**: Model settings, endpoints, retry limits
+- **Input Script**: Full script with character count
+- **Execution Timeline**: Chronological log of all agent events
+  - Start events with input summaries
+  - Complete events with output summaries and execution times
+  - Retry events with feedback messages
+  - Error events with full error details and stack traces
+- **Statistics**: Success/failure counts, execution time metrics
+
+### error-{id}.md (Failure)
+
+Concise error reference created on pipeline failure:
+- List of all errors with timestamps
+- Error details and stack traces
+- Input that caused each error
+- Retry counts per stage
+- Summary of total errors and failed stages
+
+### Example execution-log.md
+
+```markdown
+# Pipeline Execution Log
+
+**Execution ID:** f216b639
+**Status:** ✅ Success
+**Duration:** 9.77s
+
+## Configuration
+- **Ollama.Endpoint:** http://localhost:11434
+- **Ollama.DefaultModel:** qwen2.5-coder:latest
+
+## Execution Timeline
+
+### 🎬 SceneParsing
+
+#### ▶️ [02:33:55.505] Start
+**Agent:** SceneParser
+
+#### ✅ [02:34:05.250] Complete
+**Agent:** SceneParser
+**Execution Time:** 545ms
+
+## Statistics
+- **Successful Stages:** 2
+- **Avg Execution Time:** 272ms
+```
+
+---
+
 ## Building and Running
 
 ### Build
@@ -197,6 +263,63 @@ dotnet run -- --input script.txt --output ./output
 # Run with configuration
 dotnet run --project src/AIScriptToMediaDotNet.App -- --input script.txt --config appsettings.json
 ```
+
+---
+
+## Debugging with Logs
+
+### View Execution Log
+
+After a successful run, check the detailed execution log:
+
+```bash
+# View execution log
+cat output/{Title}_{timestamp}/execution-log.md
+
+# Or on Windows
+type output\{Title}_{timestamp}\execution-log.md
+```
+
+### View Error Log
+
+After a failed run, check the error log:
+
+```bash
+# View error log
+cat output/error-{executionId}.md
+
+# Or on Windows
+type output\error-{executionId}.md
+```
+
+### Enable Debug Logging
+
+For more verbose output during development:
+
+```bash
+# Set environment variable
+export DOTNET_LOGGING__CONSOLE__LOGLEVEL=Debug  # Linux/macOS
+set DOTNET_LOGGING__CONSOLE__LOGLEVEL=Debug     # Windows
+
+# Or modify appsettings.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
+    }
+  }
+}
+```
+
+### Common Log Patterns
+
+| Pattern | Meaning |
+|---------|---------|
+| `▶️ Start` | Agent/stage started |
+| `✅ Complete` | Agent/stage completed successfully |
+| `🔄 Retry` | Retry attempt due to validation failure |
+| `❌ Error` | Agent/stage failed with error |
+| `⏳ Running` | Stage in progress |
 
 ---
 

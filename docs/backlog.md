@@ -428,18 +428,28 @@ flowchart TB
 
 ### [EXT-006] Verify Logging
 **Priority**: P0
-**Status**: Todo
+**Status**: ✅ Done
 **GitHub**: [#34](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/34)
+**Completed**: 2026-02-23
+**Branch**: `feature/EXT-006-verify-logging`
+**ADR**: [ADR-009](adr/ADR-009-verify-logging.md)
 
 **As a** developer/debugger
 **I want** detailed error logs and success logs for each pipeline run
 **So that** I can debug issues and understand agent behavior
 
 **Acceptance Criteria**:
-- [ ] Error logs with detailed information (inputs, agent responses, stack traces, failure stages)
-- [ ] Success logs with concise inputs and outputs for each agent
-- [ ] Logs should include all information needed to recreate issues
-- [ ] Logs should allow understanding why an agent behaved the way it did
+- [x] Error logs with detailed information (inputs, agent responses, stack traces, failure stages)
+- [x] Success logs with concise inputs and outputs for each agent
+- [x] Logs include all information needed to recreate issues
+- [x] Logs allow understanding why an agent behaved the way it did
+- [x] `PipelineExecutionContext` class for capturing execution details
+- [x] `AgentLogEntry` class for structured log entries
+- [x] `ExecutionLogExporter` for markdown export
+- [x] Error log export on failure (`error-{id}.md`)
+- [x] Execution log export on success (`execution-log.md`)
+- [x] Configuration snapshot captured for each run
+- [x] Documentation updated (README, running-book, ADR-009)
 
 ---
 

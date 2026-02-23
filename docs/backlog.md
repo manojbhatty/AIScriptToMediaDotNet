@@ -169,19 +169,24 @@ flowchart TB
 ---
 
 ### [SCENE-001] Scene Parser Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#6](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/6)
+**Completed**: 2026-02-23
+**Branch**: `feature/SCENE-001-parser-agent`
 
-**As a** script processor  
-**I want** an agent that parses scripts into scenes  
+**As a** script processor
+**I want** an agent that parses scripts into scenes
 **So that** downstream agents can work with structured data
 
 **Acceptance Criteria**:
-- [ ] Accepts full script text as input
-- [ ] Outputs list of scenes with: id, title, description, location, characters, time
-- [ ] Handles dialogue, action, narration segments
-- [ ] Output is valid JSON/structured format
-- [ ] Uses AI to intelligently segment scenes
+- [x] Accepts full script text as input
+- [x] Outputs list of scenes with: id, title, description, location, characters, time
+- [x] Handles dialogue, action, narration segments
+- [x] Output is valid JSON/structured format
+- [x] Uses AI to intelligently segment scenes
+- [x] Error handling with meaningful messages
+- [x] Integration with orchestrator retry loop
 
 ---
 

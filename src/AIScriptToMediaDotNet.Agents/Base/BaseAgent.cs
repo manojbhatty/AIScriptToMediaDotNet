@@ -9,7 +9,10 @@ namespace AIScriptToMediaDotNet.Agents.Base;
 /// </summary>
 public abstract class BaseAgent : IAgent
 {
-    private readonly ILogger<BaseAgent> _logger;
+    /// <summary>
+    /// Gets the logger instance.
+    /// </summary>
+    protected readonly ILogger<BaseAgent> _logger;
 
     /// <inheritdoc />
     public abstract string Name { get; }

@@ -6,6 +6,7 @@ using AIScriptToMediaDotNet.Core.Options;
 using AIScriptToMediaDotNet.Core.Orchestration;
 using AIScriptToMediaDotNet.Core.Prompts;
 using AIScriptToMediaDotNet.Providers.Extensions;
+using AIScriptToMediaDotNet.Services.ComfyUI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -260,6 +261,12 @@ internal class Program
             VideoPromptVerifierPrompt = File.ReadAllText(Path.Combine(promptsPath, "VideoPromptVerifierPrompt.txt"))
         };
         services.AddSingleton(agentPrompts);
+
+        // Add ComfyUI client
+        services.AddComfyUI(cfg =>
+        {
+            configuration.GetSection("ComfyUI").Bind(cfg);
+        });
 
         // Add agents
         services.AddScoped<SceneParserAgent>(sp =>

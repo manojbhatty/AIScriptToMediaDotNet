@@ -33,6 +33,10 @@ public static class MarkdownExporter
         var photoPromptsPath = Path.Combine(outputFolder, "photo-prompts.md");
         File.WriteAllText(photoPromptsPath, ExportPhotoPrompts(context.PhotoPrompts));
 
+        // Export video prompts
+        var videoPromptsPath = Path.Combine(outputFolder, "video-prompts.md");
+        File.WriteAllText(videoPromptsPath, ExportVideoPrompts(context.VideoPrompts));
+
         // Export agent log
         var logPath = Path.Combine(outputFolder, "agent-log.md");
         File.WriteAllText(logPath, ExportAgentLog(context));
@@ -108,6 +112,52 @@ public static class MarkdownExporter
                 if (!string.IsNullOrEmpty(prompt.NegativePrompt))
                 {
                     md.AppendLine($"- **Negative Prompt:** {prompt.NegativePrompt}\n");
+                }
+
+                md.AppendLine("---\n\n");
+            }
+        }
+
+        return md.ToString();
+    }
+
+    /// <summary>
+    /// Exports video prompts to markdown format.
+    /// </summary>
+    /// <param name="videoPrompts">The list of video prompts.</param>
+    /// <returns>Markdown formatted video prompts.</returns>
+    private static string ExportVideoPrompts(List<VideoPrompt> videoPrompts)
+    {
+        var md = new System.Text.StringBuilder();
+        md.AppendLine("# Video Prompts\n\n");
+        md.AppendLine($"**Total Prompts:** {videoPrompts.Count}\n\n");
+        md.AppendLine("**Note:** Video prompts are for reference and planning in v1. No actual video generation.\n\n");
+
+        // Group by scene
+        var promptsByScene = videoPrompts.GroupBy(p => p.SceneId).OrderBy(g => g.Key);
+
+        foreach (var sceneGroup in promptsByScene)
+        {
+            md.AppendLine($"## Scene {sceneGroup.Key}\n\n");
+
+            foreach (var prompt in sceneGroup)
+            {
+                md.AppendLine($"### {prompt.Id}\n\n");
+                md.AppendLine($"**Full Prompt:**\n\n{prompt.Prompt}\n\n");
+                
+                md.AppendLine("**Details:**\n\n");
+                md.AppendLine($"- **Motion:** {prompt.Motion}\n");
+                md.AppendLine($"- **Camera Movement:** {prompt.CameraMovement}\n");
+                md.AppendLine($"- **Duration:** {prompt.DurationSeconds} seconds\n");
+
+                if (!string.IsNullOrEmpty(prompt.Transition))
+                {
+                    md.AppendLine($"- **Transition:** {prompt.Transition}\n");
+                }
+
+                if (!string.IsNullOrEmpty(prompt.ScriptExcerpt))
+                {
+                    md.AppendLine($"- **Script Excerpt:** {prompt.ScriptExcerpt}\n");
                 }
 
                 md.AppendLine("---\n\n");

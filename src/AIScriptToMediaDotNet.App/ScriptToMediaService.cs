@@ -1,5 +1,6 @@
 using AIScriptToMediaDotNet.Agents.Scene;
 using AIScriptToMediaDotNet.Agents.Photo;
+using AIScriptToMediaDotNet.Agents.Video;
 using AIScriptToMediaDotNet.Core.Agents;
 using AIScriptToMediaDotNet.Core.Context;
 using AIScriptToMediaDotNet.Core.Logging;
@@ -12,6 +13,8 @@ using SceneParserInput = AIScriptToMediaDotNet.Agents.Scene.SceneParserInput;
 using SceneVerificationInput = AIScriptToMediaDotNet.Agents.Scene.SceneVerificationInput;
 using PhotoPromptCreatorInput = AIScriptToMediaDotNet.Agents.Photo.PhotoPromptCreatorInput;
 using PhotoPromptVerificationInput = AIScriptToMediaDotNet.Agents.Photo.PhotoPromptVerificationInput;
+using VideoPromptCreatorInput = AIScriptToMediaDotNet.Agents.Video.VideoPromptCreatorInput;
+using VideoPromptVerificationInput = AIScriptToMediaDotNet.Agents.Video.VideoPromptVerificationInput;
 
 namespace AIScriptToMediaDotNet.App;
 
@@ -25,6 +28,8 @@ public class ScriptToMediaService
     private readonly SceneVerifierAgent _sceneVerifier;
     private readonly PhotoPromptCreatorAgent _photoPromptCreator;
     private readonly PhotoPromptVerifierAgent _photoPromptVerifier;
+    private readonly VideoPromptCreatorAgent _videoPromptCreator;
+    private readonly VideoPromptVerifierAgent _videoPromptVerifier;
     private readonly ILogger<ScriptToMediaService> _logger;
     private readonly PipelineExecutionContext _executionContext;
 
@@ -36,6 +41,8 @@ public class ScriptToMediaService
     /// <param name="sceneVerifier">The scene verifier agent.</param>
     /// <param name="photoPromptCreator">The photo prompt creator agent.</param>
     /// <param name="photoPromptVerifier">The photo prompt verifier agent.</param>
+    /// <param name="videoPromptCreator">The video prompt creator agent.</param>
+    /// <param name="videoPromptVerifier">The video prompt verifier agent.</param>
     /// <param name="logger">The logger instance.</param>
     public ScriptToMediaService(
         PipelineOrchestrator orchestrator,
@@ -43,6 +50,8 @@ public class ScriptToMediaService
         SceneVerifierAgent sceneVerifier,
         PhotoPromptCreatorAgent photoPromptCreator,
         PhotoPromptVerifierAgent photoPromptVerifier,
+        VideoPromptCreatorAgent videoPromptCreator,
+        VideoPromptVerifierAgent videoPromptVerifier,
         ILogger<ScriptToMediaService> logger)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
@@ -50,6 +59,8 @@ public class ScriptToMediaService
         _sceneVerifier = sceneVerifier ?? throw new ArgumentNullException(nameof(sceneVerifier));
         _photoPromptCreator = photoPromptCreator ?? throw new ArgumentNullException(nameof(photoPromptCreator));
         _photoPromptVerifier = photoPromptVerifier ?? throw new ArgumentNullException(nameof(photoPromptVerifier));
+        _videoPromptCreator = videoPromptCreator ?? throw new ArgumentNullException(nameof(videoPromptCreator));
+        _videoPromptVerifier = videoPromptVerifier ?? throw new ArgumentNullException(nameof(videoPromptVerifier));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _executionContext = new PipelineExecutionContext();
     }
@@ -199,6 +210,58 @@ public class ScriptToMediaService
             }
 
             _logger.LogInformation("Photo prompts verified successfully");
+
+            // Stage 5: Video Prompt Creation
+            _logger.LogInformation("Stage 5: Creating video prompts...");
+            var videoPromptsCreated = await _orchestrator.ExecuteStageAsync<VideoPromptCreatorInput, List<VideoPrompt>>(
+                context,
+                "VideoPromptCreation",
+                _videoPromptCreator,
+                ctx => new VideoPromptCreatorInput { Scenes = ctx.Scenes },
+                (ctx, videoPrompts) => ctx.VideoPrompts = videoPrompts,
+                cancellationToken,
+                _executionContext);
+
+            if (!videoPromptsCreated)
+            {
+                _logger.LogError("Video prompt creation failed after all retries");
+                _executionContext.Fail("Video prompt creation failed after all retries");
+                
+                // Export error log even on failure
+                var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
+                ExportErrorLog(_executionContext, errorLogPath);
+                _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
+                
+                return context;
+            }
+
+            _logger.LogInformation("Successfully created {PromptCount} video prompts", context.VideoPrompts.Count);
+
+            // Stage 6: Video Prompt Verification
+            _logger.LogInformation("Stage 6: Verifying video prompts...");
+            var videoPromptsVerified = await _orchestrator.ExecuteStageAsync<VideoPromptVerificationInput, ValidationResult>(
+                context,
+                "VideoPromptVerification",
+                _videoPromptVerifier,
+                ctx => new VideoPromptVerificationInput { Scenes = ctx.Scenes, VideoPrompts = ctx.VideoPrompts },
+                (ctx, validationResult) => { /* Validation result stored if needed */ },
+                cancellationToken,
+                _executionContext);
+
+            if (!videoPromptsVerified)
+            {
+                _logger.LogError("Video prompt verification failed after all retries");
+                _executionContext.Fail("Video prompt verification failed after all retries");
+                
+                // Export error log even on failure
+                var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
+                ExportErrorLog(_executionContext, errorLogPath);
+                _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
+                
+                return context;
+            }
+
+            _logger.LogInformation("Video prompts verified successfully");
 
             // Log pipeline status
             var status = _orchestrator.GetPipelineStatus(context);

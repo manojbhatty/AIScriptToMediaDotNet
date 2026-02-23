@@ -11,9 +11,18 @@ using SceneModel = AIScriptToMediaDotNet.Core.Context.Scene;
 namespace AIScriptToMediaDotNet.Agents.Scene;
 
 /// <summary>
+/// Input for scene verification containing both script and scenes.
+/// </summary>
+public class SceneVerificationInput
+{
+    public string OriginalScript { get; set; } = string.Empty;
+    public List<SceneModel> Scenes { get; set; } = new();
+}
+
+/// <summary>
 /// Agent that validates parsed scenes against the original script.
 /// </summary>
-public class SceneVerifierAgent : VerifierAgent<List<SceneModel>>
+public class SceneVerifierAgent : VerifierAgent<SceneVerificationInput>
 {
     private readonly AgentPrompts _prompts;
 
@@ -36,16 +45,16 @@ public class SceneVerifierAgent : VerifierAgent<List<SceneModel>>
     }
 
     /// <inheritdoc />
-    public override async Task<AgentResult<ValidationResult>> ProcessAsync(List<SceneModel> scenes, CancellationToken cancellationToken = default)
+    public override async Task<AgentResult<ValidationResult>> ProcessAsync(SceneVerificationInput input, CancellationToken cancellationToken = default)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
-            _logger.LogInformation("Starting scene verification for {SceneCount} scenes", scenes.Count);
+            _logger.LogInformation("Starting scene verification for {SceneCount} scenes", input.Scenes.Count);
 
             // Invoke AI and parse response
-            var validationResult = await ValidateAsync(scenes, cancellationToken);
+            var validationResult = await ValidateAsync(input, cancellationToken);
             _logger.LogInformation("Verification complete: {IsValid}", validationResult.IsValid);
 
             stopwatch.Stop();
@@ -70,13 +79,13 @@ public class SceneVerifierAgent : VerifierAgent<List<SceneModel>>
     /// <summary>
     /// Validates the scenes against the original script.
     /// </summary>
-    /// <param name="scenes">The parsed scenes to validate.</param>
+    /// <param name="input">The verification input containing script and scenes.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The validation result.</returns>
-    protected override async Task<ValidationResult> ValidateAsync(List<SceneModel> scenes, CancellationToken cancellationToken = default)
+    protected override async Task<ValidationResult> ValidateAsync(SceneVerificationInput input, CancellationToken cancellationToken = default)
     {
-        // Build the prompt
-        var prompt = BuildPrompt(scenes);
+        // Build the prompt with both script and scenes
+        var prompt = BuildPrompt(input);
 
         // Invoke AI
         var response = await InvokeAIAsync(prompt, cancellationToken);
@@ -88,14 +97,17 @@ public class SceneVerifierAgent : VerifierAgent<List<SceneModel>>
     /// <summary>
     /// Builds the prompt for scene verification.
     /// </summary>
-    /// <param name="scenes">The parsed scenes to validate.</param>
+    /// <param name="input">The verification input containing script and scenes.</param>
     /// <returns>The prompt to send to the AI.</returns>
-    protected override string BuildPrompt(List<SceneModel> scenes)
+    protected override string BuildPrompt(SceneVerificationInput input)
     {
-        var scenesJson = JsonSerializer.Serialize(scenes, new JsonSerializerOptions { WriteIndented = true });
+        var scenesJson = JsonSerializer.Serialize(input.Scenes, new JsonSerializerOptions { WriteIndented = true });
         
-        // Replace {{0}} placeholder with the scenes JSON
-        return _prompts.SceneVerifierPrompt.Replace("{{0}}", scenesJson, StringComparison.OrdinalIgnoreCase);
+        // Replace {{0}} with script and {{1}} with scenes JSON
+        var prompt = _prompts.SceneVerifierPrompt.Replace("{{0}}", input.OriginalScript, StringComparison.OrdinalIgnoreCase);
+        prompt = prompt.Replace("{{1}}", scenesJson, StringComparison.OrdinalIgnoreCase);
+        
+        return prompt;
     }
 
     /// <summary>

@@ -1,9 +1,12 @@
 using AIScriptToMediaDotNet.Agents.Scene;
+using AIScriptToMediaDotNet.Core.Agents;
 using AIScriptToMediaDotNet.Core.Context;
 using AIScriptToMediaDotNet.Core.Logging;
 using AIScriptToMediaDotNet.Core.Orchestration;
 using AIScriptToMediaDotNet.Core.Prompts;
 using Microsoft.Extensions.Logging;
+
+using SceneVerificationInput = AIScriptToMediaDotNet.Agents.Scene.SceneVerificationInput;
 
 namespace AIScriptToMediaDotNet.App;
 
@@ -105,11 +108,11 @@ public class ScriptToMediaService
 
             // Stage 2: Scene Verification
             _logger.LogInformation("Stage 2: Verifying scenes...");
-            var verified = await _orchestrator.ExecuteStageAsync(
+            var verified = await _orchestrator.ExecuteStageAsync<SceneVerificationInput, ValidationResult>(
                 context,
                 "SceneVerification",
                 _sceneVerifier,
-                ctx => ctx.Scenes,
+                ctx => new SceneVerificationInput { OriginalScript = ctx.OriginalScript, Scenes = ctx.Scenes },
                 (ctx, validationResult) => { /* Validation result stored in context if needed */ },
                 cancellationToken,
                 _executionContext);

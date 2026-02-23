@@ -191,19 +191,22 @@ flowchart TB
 ---
 
 ### [SCENE-002] Scene Verifier Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#18](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/18)
+**Completed**: 2026-02-23
+**Branch**: `feature/SCENE-002-verifier-agent`
 
-**As a** quality gate  
-**I want** an agent that validates parsed scenes  
+**As a** quality gate
+**I want** an agent that validates parsed scenes
 **So that** incorrect scene breakdowns are caught early
 
 **Acceptance Criteria**:
-- [ ] Receives original script + parsed scenes
-- [ ] Validates: scene count合理性, scene descriptions match script, no missing content
-- [ ] Returns validation result with specific errors
-- [ ] Can request re-parse with feedback
-- [ ] Works with orchestrator retry loop
+- [x] Receives original script + parsed scenes
+- [x] Validates: scene count, scene descriptions match script, no missing content
+- [x] Returns validation result with specific errors
+- [x] Can request re-parse with feedback
+- [x] Works with orchestrator retry loop
 
 ---
 

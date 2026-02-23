@@ -300,7 +300,7 @@ flowchart TB
 **Status**: ✅ Done
 **GitHub**: [#23](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/23)
 **Completed**: 2026-02-23
-**Branch**: `feature/PHOTO-001-002-photo-prompts`, `feature/VIDEO-001-002-video-prompts`
+**Branch**: `feature/PHOTO-001-002-photo-prompts`, `feature/VIDEO-001-002-video-prompts`, `feature/EXPORT-001-markdown-exporter`
 
 **As a** user
 **I want** all prompts and scenes saved to markdown files
@@ -312,8 +312,15 @@ flowchart TB
 - [x] Saves `scenes.md` - parsed scenes with descriptions
 - [x] Saves `photo-prompts.md` - photo prompts organized by scene
 - [x] Saves `video-prompts.md` - video prompts organized by scene
-- [x] Each prompt includes scene reference and script excerpt
+- [x] Each prompt includes scene reference and script excerpt (enforced via prompts)
 - [x] Clean, readable formatting
+
+**Enhancements in EXPORT-001 branch**:
+- Updated PhotoPromptCreator prompt to REQUIRE scriptExcerpt field
+- Updated PhotoPromptVerifier to validate scriptExcerpt presence
+- Updated VideoPromptCreator prompt to REQUIRE scriptExcerpt field
+- Updated VideoPromptVerifier to validate scriptExcerpt presence
+- Script excerpts now explicitly requested in AI prompts with examples
 
 ---
 

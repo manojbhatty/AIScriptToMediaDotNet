@@ -26,7 +26,7 @@ public class OllamaProvider : IAIProvider
     /// </summary>
     public OllamaProvider(
         HttpClient httpClient,
-        IOptions<OllamaOptions> options,
+        Microsoft.Extensions.Options.IOptionsSnapshot<OllamaOptions> options,
         ILogger<OllamaProvider> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));

@@ -166,8 +166,9 @@ internal class Program
     private static async Task RunPipelineMode(AppOptions options)
     {
         // Build configuration
+        var appPath = AppContext.BaseDirectory;
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
+            .SetBasePath(appPath)
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables()
             .Build();

@@ -456,9 +456,41 @@ flowchart TB
 
 ---
 
+### [EXT-007] Move Prompts to Separate Files
+**Priority**: P2
+**Status**: Todo
+**GitHub**: [#37](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/37)
+**Created**: 2026-02-23
+
+**As a** developer/prompt engineer
+**I want** prompts to be in separate text files instead of appsettings.json
+**So that** they are easier to read, edit, and maintain without JSON escaping
+
+**Acceptance Criteria**:
+- [ ] Create `Prompts/` folder in `AIScriptToMediaDotNet.App`
+- [ ] Move each prompt to its own `.txt` file:
+  - `SceneParserPrompt.txt`
+  - `SceneVerifierPrompt.txt`
+  - `PhotoPromptCreatorPrompt.txt`
+  - `PhotoPromptVerifierPrompt.txt`
+- [ ] Update `Program.cs` to load prompts from files at startup
+- [ ] Remove prompt templates from `appsettings.json`
+- [ ] Keep only configuration settings in `appsettings.json`
+- [ ] Update documentation to reflect new structure
+- [ ] Ensure prompts are copied to output directory on build
+
+**Benefits**:
+- No JSON escaping required
+- Easier to read and edit prompts
+- Better separation of concerns (config vs. prompts)
+- Prompt engineers can edit without touching config
+- Cleaner version control (prompt changes separate from config changes)
+
+---
+
 ## Current Sprint / Focus
 
-**Active**: SCENE-001 (Scene Parser Agent - Implementation Complete, PR Open)
+**Active**: PHOTO-001/002 (Photo Prompt Creator & Verifier - Implementation Complete)
 
 **Completed**:
 - CORE-002: AI Provider Abstraction ✅
@@ -466,6 +498,15 @@ flowchart TB
 - CORE-004: Shared Context Object ✅
 - CORE-005: Orchestrator Implementation ✅
 - SCENE-001: Scene Parser Agent ✅
+- SCENE-002: Scene Verifier Agent ✅
+- EXT-006: Verify Logging ✅
+
+**Next Up**:
+- VIDEO-001: Video Prompt Creator Agent (P0)
+- VIDEO-002: Video Prompt Verifier Agent (P0)
+- EXT-007: Move Prompts to Separate Files (P2)
+- COMFY-001: ComfyUI Client (P0)
+- COMFY-002: Image Generation Agent (P0)
 
 ---
 

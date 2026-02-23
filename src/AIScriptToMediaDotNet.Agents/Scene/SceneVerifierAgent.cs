@@ -130,9 +130,11 @@ public class SceneVerifierAgent : VerifierAgent<List<SceneModel>>
         catch (JsonException ex)
         {
             // Log the problematic JSON for debugging
-            _logger.LogError(ex, "JSON parsing failed. Problematic JSON:\n{Json}", 
-                json.Length > 2000 ? json.Substring(0, 2000) + $"... ({json.Length - 2000} more chars)" : json);
-            throw;
+            var jsonPreview = json.Length > 2000 ? json.Substring(0, 2000) + $"... ({json.Length - 2000} more chars)" : json;
+            _logger.LogError(ex, "JSON parsing failed. Problematic JSON:\n{Json}", jsonPreview);
+            
+            // Re-throw with JSON context for error logging
+            throw new JsonException($"JSON parsing failed. Problematic JSON preview: {jsonPreview}", ex);
         }
     }
 

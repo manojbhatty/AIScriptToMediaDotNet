@@ -105,17 +105,22 @@ flowchart TB
 ---
 
 ### [CORE-003] Agent Abstraction
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#3](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/3)
+**Completed**: 2026-02-23
+**Branch**: `feature/CORE-003-agent-interface`
 
-**As a** system architect  
-**I want** an `IAgent` interface  
+**As a** system architect
+**I want** an `IAgent` interface
 **So that** all agents have consistent contracts
 
 **Acceptance Criteria**:
-- [ ] `IAgent<TInput, TOutput>` generic interface
-- [ ] Base agent class with common functionality (logging, retry support)
-- [ ] Agent registration/discovery mechanism
+- [x] `IAgent<TInput, TOutput>` generic interface
+- [x] Base agent class with common functionality (logging, retry support)
+- [x] Agent registration/discovery mechanism via DI extensions
+- [x] `CreatorAgent` base class for content generation agents
+- [x] `VerifierAgent` base class for validation agents with `ValidationResult` type
 
 ---
 

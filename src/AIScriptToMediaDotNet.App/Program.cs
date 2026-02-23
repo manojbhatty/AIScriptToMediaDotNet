@@ -1,5 +1,6 @@
 ﻿using AIScriptToMediaDotNet.Agents.Scene;
 using AIScriptToMediaDotNet.Agents.Photo;
+using AIScriptToMediaDotNet.Agents.Video;
 using AIScriptToMediaDotNet.Core.Interfaces;
 using AIScriptToMediaDotNet.Core.Options;
 using AIScriptToMediaDotNet.Core.Orchestration;
@@ -283,6 +284,23 @@ internal class Program
             var logger = sp.GetRequiredService<ILogger<PhotoPromptVerifierAgent>>();
             var prompts = sp.GetRequiredService<AgentPrompts>();
             return new PhotoPromptVerifierAgent(aiProvider, logger, prompts);
+        });
+
+        // Add video prompt agents
+        services.AddScoped<VideoPromptCreatorAgent>(sp =>
+        {
+            var aiProvider = sp.GetRequiredService<IAIProvider>();
+            var logger = sp.GetRequiredService<ILogger<VideoPromptCreatorAgent>>();
+            var prompts = sp.GetRequiredService<AgentPrompts>();
+            return new VideoPromptCreatorAgent(aiProvider, logger, prompts);
+        });
+
+        services.AddScoped<VideoPromptVerifierAgent>(sp =>
+        {
+            var aiProvider = sp.GetRequiredService<IAIProvider>();
+            var logger = sp.GetRequiredService<ILogger<VideoPromptVerifierAgent>>();
+            var prompts = sp.GetRequiredService<AgentPrompts>();
+            return new VideoPromptVerifierAgent(aiProvider, logger, prompts);
         });
 
         // Add orchestrator

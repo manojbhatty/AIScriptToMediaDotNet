@@ -29,4 +29,16 @@ public class AgentPrompts
     /// Use {0} as placeholder for scenes JSON and {1} for photo prompts JSON.
     /// </summary>
     public string PhotoPromptVerifierPrompt { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the prompt template for video prompt creation.
+    /// Use {0} as placeholder for the scenes JSON.
+    /// </summary>
+    public string VideoPromptCreatorPrompt { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the prompt template for video prompt verification.
+    /// Use {0} as placeholder for scenes JSON and {1} for video prompts JSON.
+    /// </summary>
+    public string VideoPromptVerifierPrompt { get; set; } = string.Empty;
 }

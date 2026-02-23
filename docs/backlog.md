@@ -489,26 +489,29 @@ flowchart TB
 
 ### [EXT-007] Move Prompts to Separate Files
 **Priority**: P2
-**Status**: Todo
+**Status**: ✅ Done
 **GitHub**: [#37](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/37)
-**Created**: 2026-02-23
+**Completed**: 2026-02-23
+**Branch**: `feature/EXT-007-prompt-files`
 
 **As a** developer/prompt engineer
 **I want** prompts to be in separate text files instead of appsettings.json
 **So that** they are easier to read, edit, and maintain without JSON escaping
 
 **Acceptance Criteria**:
-- [ ] Create `Prompts/` folder in `AIScriptToMediaDotNet.App`
-- [ ] Move each prompt to its own `.txt` file:
-  - `SceneParserPrompt.txt`
-  - `SceneVerifierPrompt.txt`
-  - `PhotoPromptCreatorPrompt.txt`
-  - `PhotoPromptVerifierPrompt.txt`
-- [ ] Update `Program.cs` to load prompts from files at startup
-- [ ] Remove prompt templates from `appsettings.json`
-- [ ] Keep only configuration settings in `appsettings.json`
-- [ ] Update documentation to reflect new structure
-- [ ] Ensure prompts are copied to output directory on build
+- [x] Create `Prompts/` folder in `AIScriptToMediaDotNet.App`
+- [x] Move each prompt to its own `.txt` file:
+  - [x] `SceneParserPrompt.txt`
+  - [x] `SceneVerifierPrompt.txt`
+  - [x] `PhotoPromptCreatorPrompt.txt`
+  - [x] `PhotoPromptVerifierPrompt.txt`
+  - [x] `VideoPromptCreatorPrompt.txt`
+  - [x] `VideoPromptVerifierPrompt.txt`
+- [x] Update `Program.cs` to load prompts from files at startup
+- [x] Remove prompt templates from `appsettings.json`
+- [x] Keep only configuration settings in `appsettings.json`
+- [x] Update documentation to reflect new structure
+- [x] Ensure prompts are copied to output directory on build
 
 **Benefits**:
 - No JSON escaping required
@@ -521,7 +524,7 @@ flowchart TB
 
 ## Current Sprint / Focus
 
-**Active**: VIDEO-001/002 (Video Prompt Creator & Verifier - Implementation Complete)
+**Active**: EXT-007 (Move Prompts to Separate Files - Implementation Complete)
 
 **Completed**:
 - CORE-002: AI Provider Abstraction ✅
@@ -534,14 +537,14 @@ flowchart TB
 - PHOTO-002: Photo Prompt Verifier Agent ✅
 - VIDEO-001: Video Prompt Creator Agent ✅
 - VIDEO-002: Video Prompt Verifier Agent ✅
+- EXPORT-001: Markdown Exporter ✅
+- EXPORT-002: Agent Execution Logger ✅
 - EXT-006: Verify Logging ✅
+- EXT-007: Move Prompts to Separate Files ✅
 
 **Next Up**:
-- EXPORT-001: Markdown Exporter (P0) - Partially done, needs enhancement
-- EXPORT-002: Agent Execution Logger (P0) - Already implemented
 - COMFY-001: ComfyUI Client (P0)
 - COMFY-002: Image Generation Agent (P0)
-- EXT-007: Move Prompts to Separate Files (P2)
 
 ---
 

@@ -72,43 +72,49 @@ AIScriptToMediaDotNet/
 
 ### Multi-Agent Pipeline
 
-Multi-agent pipeline with verification loops:
+Multi-agent pipeline with verification loops and feedback:
 
 ```mermaid
 flowchart LR
     Input[📄 Script + Title] --> Parser[🤖 Scene Parser]
-    Parser <-->|verify| Verifier1[🤖 Scene Verifier]
-    Verifier1 -->|retry ×3| Parser
+    Parser <-->|feedback| Verifier1[🤖 Scene Verifier]
+    Verifier1 -->|retry ×3 + feedback| Parser
     Verifier1 --> PhotoCreator[🤖 Photo Prompt Creator]
-    PhotoCreator <-->|verify| Verifier2[🤖 Photo Verifier]
-    Verifier2 -->|retry ×3| PhotoCreator
+    PhotoCreator <-->|feedback| Verifier2[🤖 Photo Verifier]
+    Verifier2 -->|retry ×3 + feedback| PhotoCreator
     Verifier2 --> VideoCreator[🤖 Video Prompt Creator]
-    VideoCreator <-->|verify| Verifier3[🤖 Video Verifier]
-    Verifier3 -->|retry ×3| VideoCreator
+    VideoCreator <-->|feedback| Verifier3[🤖 Video Verifier]
+    Verifier3 -->|retry ×3 + feedback| VideoCreator
     Verifier3 --> Export[📝 Markdown Export]
     Verifier3 --> ComfyUI[🎨 ComfyUI]
     Export --> Output[📁 Output Folder]
     ComfyUI --> Images[🖼️ Generated Images]
-    
+
     subgraph OutputFolder["{Title}_{date}/"]
         Output
         Images
         Log[📋 agent-log.md]
+        ExecLog[📋 execution-log.md]
+        ErrorLog[📋 error-log.md on failure]
     end
 ```
 
-Each verification stage has up to 3 retry attempts before proceeding.
+Each verification stage has up to 3 retry attempts. **Verifiers provide specific feedback** to creators on retry (e.g., "Split Scene 1 into two scenes: coffee shop and park").
 
 ## Key Features
 
 - **Local-First AI**: Uses Ollama for all AI agent inference (privacy, no API costs)
 - **Multi-Agent System**: Specialized agents for parsing, creation, and verification
-- **Verification Loops**: Creator-Verifier pattern ensures quality output (3 retries max)
+- **Verification Loops with Feedback**: Creator-Verifier pattern with actionable feedback (3 retries max)
+- **Intelligent Retry**: Verifiers provide specific feedback (e.g., "Add missing proposal scene") that creators use to improve output
 - **ComfyUI Integration**: Generates images from photo prompts only
 - **Video Prompts**: Created for reference/planning (no video generation)
 - **Extensible**: Designed for future cloud AI provider support (OpenAI, Anthropic, etc.)
 - **Markdown Export**: All prompts saved with scene references
-- **Detailed Logging**: Agent execution log with retries, feedback, and decisions
+- **Detailed Logging**: 
+  - `agent-log.md` - Original agent execution log
+  - `execution-log.md` - Detailed log with JSON input/output data
+  - `error-log.md` - Concise error reference on failure
 
 ## Prerequisites
 

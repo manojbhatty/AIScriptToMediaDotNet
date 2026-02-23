@@ -148,7 +148,7 @@ public class PipelineOrchestrator
 }
 ```
 
-### Retry Sequence
+### Retry Sequence with Feedback
 
 ```mermaid
 sequenceDiagram
@@ -156,32 +156,70 @@ sequenceDiagram
     participant C as Creator Agent
     participant V as Verifier Agent
     participant CTX as Context
+    participant LOG as Execution Log
 
     O->>CTX: Mark Stage Started
     O->>C: ProcessAsync(input)
     C-->>O: AgentResult (Success)
     O->>V: ProcessAsync(input)
-    V-->>O: ValidationResult (IsValid=true)
-    O->>CTX: Mark Stage Complete
-
-    alt Validation Fails
-        O->>C: ProcessAsync(input)
+    V-->>O: ValidationResult (IsValid=false)
+    
+    Note over V,O: Verifier returns:<br/>- errors: ["Missing scenes"]<br/>- warnings: ["Proposal scene missing"]<br/>- feedback: ["Create separate scenes for..."]
+    
+    loop Retry up to MaxRetries (3)
+        O->>LOG: Log retry with feedback
+        O->>CTX: Increment Retry Count
+        O->>C: ProcessAsync(input + feedback)
+        Note over C: Prompt includes:<br/>"IMPORTANT FEEDBACK:<br/>{feedback from verifier}"
         C-->>O: AgentResult (Success)
         O->>V: ProcessAsync(input)
-        V-->>O: ValidationResult (IsValid=false, Feedback)
-        
-        loop Retry up to MaxRetries (3)
-            O->>CTX: Increment Retry Count
-            O->>C: ProcessAsync(input + feedback)
-            C-->>O: AgentResult (Success)
-            O->>V: ProcessAsync(input)
-            V-->>O: ValidationResult
-        end
-
-        opt Max Retries Exceeded
-            O->>CTX: Mark Stage Failed
-        end
+        V-->>O: ValidationResult
     end
+
+    opt Max Retries Exceeded
+        O->>CTX: Mark Stage Failed
+        O->>LOG: Export error-log.md
+    end
+```
+
+### Feedback Mechanism
+
+**All verifier agents MUST return feedback when validation fails.** This feedback is:
+
+1. **Captured by PipelineOrchestrator** from `ValidationResult.Feedback` property
+2. **Passed to creator agent** on retry via input object (e.g., `SceneParserInput.Feedback`)
+3. **Appended to AI prompt** as: "IMPORTANT FEEDBACK FROM PREVIOUS REVIEW: {feedback}"
+4. **Used by creator** to revise output and address specific issues
+
+**Warnings as Errors:** If a verifier returns warnings indicating missing content (keywords: "missing", "incomplete", "not fully captured", "should be created", "split", "separate scenes"), the orchestrator treats these as validation failures and triggers retry, even if `IsValid=true`.
+
+**Example Feedback Flow:**
+
+```csharp
+// Verifier returns
+new ValidationResult {
+    IsValid = false,
+    Errors = ["Only 1 scene for multi-beat script"],
+    Warnings = ["Proposal scene missing"],
+    Feedback = "Create separate scenes for: 1) Workout, 2) Proposal planning, 3) Acceptance"
+}
+
+// Creator receives on retry
+new SceneParserInput {
+    Script = "FADE IN: ...",
+    Feedback = "Create separate scenes for: 1) Workout, 2) Proposal planning, 3) Acceptance"
+}
+
+// Creator's prompt becomes
+"You are a professional script analyzer...
+
+SCRIPT TO ANALYZE:
+FADE IN: ...
+
+IMPORTANT FEEDBACK FROM PREVIOUS REVIEW:
+Create separate scenes for: 1) Workout, 2) Proposal planning, 3) Acceptance
+
+Please revise your scene parsing to address this feedback."
 ```
 
 ### Usage Example

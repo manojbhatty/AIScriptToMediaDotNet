@@ -122,16 +122,28 @@ public class PipelineOrchestrator
 
                 // Stage failed - store errors and feedback for retry
                 feedback = result.Metadata.TryGetValue("Feedback", out var fb) ? fb?.ToString() : null;
-                
+
                 // If no feedback in metadata, use errors as feedback
                 if (string.IsNullOrEmpty(feedback) && result.Errors.Any())
                 {
                     feedback = string.Join("; ", result.Errors);
                 }
-                
+
                 context.MarkStageFailed(stageName, result.Errors, feedback);
-                executionContext?.LogAgentError(agent.Name, stageName,
-                    string.Join("; ", result.Errors), null, lastInput?.ToString());
+                
+                // Serialize input and output for error logging
+                var errorInputJson = PipelineExecutionContext.SerializeToJson(lastInput);
+                var errorOutputJson = result.Data != null ? PipelineExecutionContext.SerializeToJson(result.Data) : null;
+                
+                executionContext?.LogAgentError(
+                    agent.Name, 
+                    stageName,
+                    string.Join("; ", result.Errors), 
+                    null, 
+                    lastInput?.ToString(),
+                    errorInputJson,
+                    errorOutputJson,
+                    (long)stopwatch.ElapsedMilliseconds);
 
                 _logger.LogWarning(
                     "Stage {StageName} failed (Attempt {Attempt}/{MaxRetries}): {Errors}",

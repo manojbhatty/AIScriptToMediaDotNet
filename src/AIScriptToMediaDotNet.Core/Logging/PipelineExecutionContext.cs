@@ -229,8 +229,11 @@ public class PipelineExecutionContext
     /// <param name="error">The error message.</param>
     /// <param name="stackTrace">The stack trace.</param>
     /// <param name="inputSummary">Summary of the input that caused the error.</param>
+    /// <param name="inputData">Full JSON data of the input.</param>
+    /// <param name="outputData">Full JSON data of the output (if available).</param>
+    /// <param name="executionTimeMs">Execution time in milliseconds.</param>
     /// <returns>The created log entry.</returns>
-    public AgentLogEntry LogAgentError(string agent, string stage, string error, string? stackTrace, string? inputSummary = null)
+    public AgentLogEntry LogAgentError(string agent, string stage, string error, string? stackTrace, string? inputSummary = null, string? inputData = null, string? outputData = null, long executionTimeMs = 0)
     {
         var entry = new AgentLogEntry
         {
@@ -241,6 +244,9 @@ public class PipelineExecutionContext
             Message = $"Agent {agent} failed stage {stage}",
             ErrorDetails = error,
             InputSummary = inputSummary != null ? Truncate(inputSummary, 500) : null,
+            InputData = inputData,
+            OutputData = outputData,
+            ExecutionTimeMs = executionTimeMs > 0 ? executionTimeMs : null,
             Metadata = { { "StackTrace", stackTrace } }
         };
         AddLogEntry(entry);

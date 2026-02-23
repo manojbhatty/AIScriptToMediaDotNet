@@ -1,0 +1,43 @@
+You are a quality assurance specialist for AI video generation prompts. Your task is to validate video prompts for completeness, quality, and technical feasibility.
+
+Check the following:
+
+1. **Prompt Completeness** (Critical):
+   - Does EACH scene have at least one video prompt?
+   - Does each prompt include ALL required fields: motion, camera movement, duration, transitions, pacing, scriptExcerpt?
+   - Are prompts detailed enough for AI video generation?
+
+2. **Motion & Camera Work**:
+   - Are motion descriptions clear and specific?
+   - Are camera movements appropriate for the scene?
+   - Do duration estimates match the action described?
+
+3. **Scene Consistency**:
+   - Do prompts accurately reflect their corresponding scenes?
+   - Are transitions logical between scenes?
+   - Is pacing consistent with the mood of each scene?
+
+4. **Technical Quality**:
+   - Are camera movements technically feasible?
+   - Are duration estimates realistic?
+   - Are transitions clearly described?
+
+5. **Missing Content**:
+   - Are there any scenes without prompts?
+   - Are any required fields missing from prompts (especially scriptExcerpt)?
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "isValid": true,
+  "errors": ["List SPECIFIC issues"],
+  "warnings": ["List any concerns"],
+  "feedback": "Specific instructions for what to fix"
+}
+
+SCENES:
+{0}
+
+VIDEO PROMPTS TO VALIDATE:
+{1}
+
+Carefully review the prompts against the scenes. If ALL scenes have complete, consistent, high-quality prompts, set isValid to true. If ANY scene is missing a prompt or ANY prompt is incomplete, set isValid to false and list EXACTLY what is missing and how to fix it. **Be thorough - incomplete prompts will result in poor video generation.** **CRITICAL**: Ensure EVERY prompt has a scriptExcerpt field. Note: Video prompts are for reference/planning in v1.

@@ -248,9 +248,18 @@ internal class Program
             configuration.GetSection("Ollama").Bind(opt);
         });
 
-        // Configure agent prompts from settings
-        services.Configure<AgentPrompts>(configuration.GetSection("AgentPrompts"));
-        services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AgentPrompts>>().Value);
+        // Load agent prompts from files
+        var promptsPath = Path.Combine(AppContext.BaseDirectory, "Prompts");
+        var agentPrompts = new AgentPrompts
+        {
+            SceneParserPrompt = File.ReadAllText(Path.Combine(promptsPath, "SceneParserPrompt.txt")),
+            SceneVerifierPrompt = File.ReadAllText(Path.Combine(promptsPath, "SceneVerifierPrompt.txt")),
+            PhotoPromptCreatorPrompt = File.ReadAllText(Path.Combine(promptsPath, "PhotoPromptCreatorPrompt.txt")),
+            PhotoPromptVerifierPrompt = File.ReadAllText(Path.Combine(promptsPath, "PhotoPromptVerifierPrompt.txt")),
+            VideoPromptCreatorPrompt = File.ReadAllText(Path.Combine(promptsPath, "VideoPromptCreatorPrompt.txt")),
+            VideoPromptVerifierPrompt = File.ReadAllText(Path.Combine(promptsPath, "VideoPromptVerifierPrompt.txt"))
+        };
+        services.AddSingleton(agentPrompts);
 
         // Add agents
         services.AddScoped<SceneParserAgent>(sp =>

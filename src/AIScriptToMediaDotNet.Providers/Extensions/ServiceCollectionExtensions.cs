@@ -26,17 +26,17 @@ public static class ServiceCollectionExtensions
             configureOptions?.Invoke(options);
         });
 
-        // Configure HttpClient for Ollama
+        // Register as IAIProvider first
+        services.AddScoped<IAIProvider, OllamaProvider>();
+
+        // Configure HttpClient for Ollama AFTER registering the service
         services.AddHttpClient<OllamaProvider>((serviceProvider, client) =>
         {
-            var options = serviceProvider.GetRequiredService<OllamaOptions>();
+            var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OllamaOptions>>().Value;
             client.BaseAddress = new Uri(options.Endpoint);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
         });
-
-        // Register as IAIProvider
-        services.AddScoped<IAIProvider, OllamaProvider>();
 
         return services;
     }

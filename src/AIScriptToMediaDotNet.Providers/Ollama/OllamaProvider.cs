@@ -59,7 +59,7 @@ public class OllamaProvider : IAIProvider
         {
             try
             {
-                _logger.LogDebug(
+                _logger.LogInformation(
                     "Generating response with model '{Model}' (attempt {Attempt}/{MaxRetries})",
                     model, attempt, maxRetries);
 
@@ -76,6 +76,8 @@ public class OllamaProvider : IAIProvider
                         Seed = modelOptions?.Seed ?? -1
                     }
                 };
+
+                _logger.LogDebug("Sending request to {Url} with model {Model}", "api/generate", model);
 
                 var response = await _httpClient.PostAsJsonAsync(
                     $"{_options.Endpoint}/api/generate",

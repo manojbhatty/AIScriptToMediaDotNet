@@ -211,111 +211,135 @@ flowchart TB
 ---
 
 ### [PHOTO-001] Photo Prompt Creator Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#19](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/19)
+**Completed**: 2026-02-23
+**Branch**: `feature/PHOTO-001-002-photo-prompts`
 
-**As a** visual designer  
-**I want** an agent that creates detailed image prompts  
+**As a** visual designer
+**I want** an agent that creates detailed image prompts
 **So that** ComfyUI can generate accurate scene images
 
 **Acceptance Criteria**:
-- [ ] Receives script + verified scenes
-- [ ] Creates one or more image prompts per scene
-- [ ] Prompts include: subject, style, lighting, composition, mood, camera details
-- [ ] Maintains visual consistency across scenes (character appearance, style)
-- [ ] Output is structured prompt format
+- [x] Receives script + verified scenes
+- [x] Creates one or more image prompts per scene
+- [x] Prompts include: subject, style, lighting, composition, mood, camera details
+- [x] Maintains visual consistency across scenes (character appearance, style)
+- [x] Output is structured prompt format
+- [x] Supports feedback from verifier on retry
 
 ---
 
 ### [PHOTO-002] Photo Prompt Verifier Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#20](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/20)
+**Completed**: 2026-02-23
+**Branch**: `feature/PHOTO-001-002-photo-prompts`
 
-**As a** quality gate  
-**I want** an agent that validates photo prompts  
+**As a** quality gate
+**I want** an agent that validates photo prompts
 **So that** prompts are complete and consistent
 
 **Acceptance Criteria**:
-- [ ] Validates prompt completeness (all required fields present)
-- [ ] Checks visual consistency across scenes
-- [ ] Ensures prompts match scene descriptions
-- [ ] Returns specific feedback for corrections
-- [ ] Works with orchestrator retry loop
+- [x] Validates prompt completeness (all required fields present)
+- [x] Checks visual consistency across scenes
+- [x] Ensures prompts match scene descriptions
+- [x] Returns specific feedback for corrections
+- [x] Works with orchestrator retry loop
+- [x] Warnings about missing content trigger retry
 
 ---
 
 ### [VIDEO-001] Video Prompt Creator Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#21](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/21)
+**Completed**: 2026-02-23
+**Branch**: `feature/VIDEO-001-002-video-prompts`
 
-**As a** video director  
-**I want** an agent that creates video generation prompts  
+**As a** video director
+**I want** an agent that creates video generation prompts
 **So that** they can be used for reference and future video generation
 
 **Acceptance Criteria**:
-- [ ] Receives script + verified scenes
-- [ ] Creates video prompts per scene (or key moments)
-- [ ] Prompts include: motion description, camera movement, duration, transitions
-- [ ] Consistent with photo prompt visual style
-- [ ] Output is structured prompt format
-- [ ] **Note**: Video prompts are for reference only, no video generation in v1
+- [x] Receives script + verified scenes
+- [x] Creates video prompts per scene (or key moments)
+- [x] Prompts include: motion description, camera movement, duration, transitions
+- [x] Consistent with photo prompt visual style
+- [x] Output is structured prompt format
+- [x] **Note**: Video prompts are for reference only, no video generation in v1
+- [x] Supports feedback from verifier on retry
 
 ---
 
 ### [VIDEO-002] Video Prompt Verifier Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#22](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/22)
+**Completed**: 2026-02-23
+**Branch**: `feature/VIDEO-001-002-video-prompts`
 
-**As a** quality gate  
-**I want** an agent that validates video prompts  
+**As a** quality gate
+**I want** an agent that validates video prompts
 **So that** they are complete and technically feasible
 
 **Acceptance Criteria**:
-- [ ] Validates prompt completeness
-- [ ] Checks motion/camera descriptions are clear
-- [ ] Ensures prompts are technically feasible
-- [ ] Returns specific feedback for corrections
-- [ ] Works with orchestrator retry loop
+- [x] Validates prompt completeness
+- [x] Checks motion/camera descriptions are clear
+- [x] Ensures prompts are technically feasible
+- [x] Returns specific feedback for corrections
+- [x] Works with orchestrator retry loop
+- [x] Warnings about missing content trigger retry
 
 ---
 
 ### [EXPORT-001] Markdown Exporter
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#23](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/23)
+**Completed**: 2026-02-23
+**Branch**: `feature/PHOTO-001-002-photo-prompts`, `feature/VIDEO-001-002-video-prompts`
 
-**As a** user  
-**I want** all prompts and scenes saved to markdown files  
+**As a** user
+**I want** all prompts and scenes saved to markdown files
 **So that** I can review and reference them
 
 **Acceptance Criteria**:
-- [ ] Creates output folder: `{Title}_{YYYY-MM-DD_HH-mm-ss}/`
-- [ ] Saves `script.md` - original script
-- [ ] Saves `scenes.md` - parsed scenes with descriptions
-- [ ] Saves `photo-prompts.md` - photo prompts organized by scene
-- [ ] Saves `video-prompts.md` - video prompts organized by scene
-- [ ] Each prompt includes scene reference and script excerpt
-- [ ] Clean, readable formatting
+- [x] Creates output folder: `{Title}_{YYYY-MM-DD_HH-mm-ss}/`
+- [x] Saves `script.md` - original script
+- [x] Saves `scenes.md` - parsed scenes with descriptions
+- [x] Saves `photo-prompts.md` - photo prompts organized by scene
+- [x] Saves `video-prompts.md` - video prompts organized by scene
+- [x] Each prompt includes scene reference and script excerpt
+- [x] Clean, readable formatting
 
 ---
 
 ### [EXPORT-002] Agent Execution Logger
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#24](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/24)
+**Completed**: 2026-02-23
+**Branch**: `feature/EXT-006-verify-logging`
 
-**As a** developer/debugger  
-**I want** a detailed log of all agent activities  
+**As a** developer/debugger
+**I want** a detailed log of all agent activities
 **So that** I can understand what happened during execution
 
 **Acceptance Criteria**:
-- [ ] Creates `agent-log.md` in output folder
-- [ ] Logs each agent's start/end timestamps
-- [ ] Records input summaries (brief description, not full content)
-- [ ] Records output summaries
-- [ ] Captures all retry attempts with reasons
-- [ ] Captures feedback messages between verifiers and creators
-- [ ] Captures validation errors and corrections
-- [ ] Captures final decisions at each stage
-- [ ] Uses markdown format with tables and code blocks
+- [x] Creates `agent-log.md` in output folder
+- [x] Logs each agent's start/end timestamps
+- [x] Records input summaries (brief description, not full content)
+- [x] Records output summaries
+- [x] Captures all retry attempts with reasons
+- [x] Captures feedback messages between verifiers and creators
+- [x] Captures validation errors and corrections
+- [x] Captures final decisions at each stage
+- [x] Uses markdown format with tables and code blocks
+- [x] Creates `execution-log.md` with detailed JSON data
+- [x] Creates `error-{id}.md` for quick error reference on failure
 
 ---
 
@@ -490,7 +514,7 @@ flowchart TB
 
 ## Current Sprint / Focus
 
-**Active**: PHOTO-001/002 (Photo Prompt Creator & Verifier - Implementation Complete)
+**Active**: VIDEO-001/002 (Video Prompt Creator & Verifier - Implementation Complete)
 
 **Completed**:
 - CORE-002: AI Provider Abstraction ✅
@@ -499,14 +523,18 @@ flowchart TB
 - CORE-005: Orchestrator Implementation ✅
 - SCENE-001: Scene Parser Agent ✅
 - SCENE-002: Scene Verifier Agent ✅
+- PHOTO-001: Photo Prompt Creator Agent ✅
+- PHOTO-002: Photo Prompt Verifier Agent ✅
+- VIDEO-001: Video Prompt Creator Agent ✅
+- VIDEO-002: Video Prompt Verifier Agent ✅
 - EXT-006: Verify Logging ✅
 
 **Next Up**:
-- VIDEO-001: Video Prompt Creator Agent (P0)
-- VIDEO-002: Video Prompt Verifier Agent (P0)
-- EXT-007: Move Prompts to Separate Files (P2)
+- EXPORT-001: Markdown Exporter (P0) - Partially done, needs enhancement
+- EXPORT-002: Agent Execution Logger (P0) - Already implemented
 - COMFY-001: ComfyUI Client (P0)
 - COMFY-002: Image Generation Agent (P0)
+- EXT-007: Move Prompts to Separate Files (P2)
 
 ---
 

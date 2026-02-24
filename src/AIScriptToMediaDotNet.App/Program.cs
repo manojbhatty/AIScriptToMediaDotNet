@@ -74,6 +74,19 @@ internal class Program
                     }
                     break;
 
+                case "--generate-images":
+                case "-g":
+                    options.GenerateImages = true;
+                    break;
+
+                case "--workflow":
+                case "-w":
+                    if (i + 1 < args.Length)
+                    {
+                        options.WorkflowPath = args[++i];
+                    }
+                    break;
+
                 case "--output":
                 case "-o":
                     if (i + 1 < args.Length)
@@ -207,6 +220,7 @@ internal class Program
                 options.Title ?? "Untitled",
                 script,
                 options.OutputPath,
+                options.GenerateImages,
                 CancellationToken.None);
 
             // Print summary
@@ -215,6 +229,9 @@ internal class Program
             Console.WriteLine("==================");
             Console.WriteLine($"Title: {context.Title}");
             Console.WriteLine($"Scenes: {context.Scenes.Count}");
+            Console.WriteLine($"Photo Prompts: {context.PhotoPrompts.Count}");
+            Console.WriteLine($"Video Prompts: {context.VideoPrompts.Count}");
+            Console.WriteLine($"Generated Images: {context.GeneratedImages.Count}");
             Console.WriteLine($"Status: {(context.IsComplete ? "Success" : "Failed")}");
 
             if (context.Scenes.Any())
@@ -224,6 +241,27 @@ internal class Program
                 foreach (var scene in context.Scenes)
                 {
                     Console.WriteLine($"  {scene.Id}: {scene.Title} ({scene.Location})");
+                }
+            }
+
+            if (context.GeneratedImages.Any())
+            {
+                Console.WriteLine();
+                Console.WriteLine("Generated Images:");
+                foreach (var image in context.GeneratedImages.Where(i => i.Success))
+                {
+                    Console.WriteLine($"  {image.FilePath}");
+                }
+
+                var failedImages = context.GeneratedImages.Where(i => !i.Success).ToList();
+                if (failedImages.Any())
+                {
+                    Console.WriteLine();
+                    Console.WriteLine($"Failed Images: {failedImages.Count}");
+                    foreach (var image in failedImages)
+                    {
+                        Console.WriteLine($"  {image.SceneId}: {image.ErrorMessage}");
+                    }
                 }
             }
         }
@@ -267,6 +305,43 @@ internal class Program
         {
             configuration.GetSection("ComfyUI").Bind(cfg);
         });
+
+        // Add ComfyUI workflow builder
+        // Try multiple locations to find the workflow file
+        var workflowPath = !string.IsNullOrEmpty(options.WorkflowPath)
+            ? Path.GetFullPath(options.WorkflowPath)
+            : FindWorkflowFile();
+        
+        services.AddSingleton<ComfyUIWorkflowBuilder>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<ComfyUIWorkflowBuilder>>();
+            return new ComfyUIWorkflowBuilder(logger, workflowPath);
+        });
+
+        // Find the workflow file in common locations
+        static string FindWorkflowFile()
+        {
+            var workflowFileName = "ComfyUI_SDXL_Image_Generation.json";
+            
+            // Try 1: Relative to base directory (bin folder)
+            var baseDirPath = Path.Combine(AppContext.BaseDirectory, "ComfyUiWorkflows", workflowFileName);
+            if (File.Exists(baseDirPath))
+                return baseDirPath;
+            
+            // Try 2: Solution root (5 levels up from bin)
+            var solutionRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+            var solutionRootPath = Path.Combine(solutionRoot, "ComfyUiWorkflows", workflowFileName);
+            if (File.Exists(solutionRootPath))
+                return solutionRootPath;
+            
+            // Try 3: Current working directory
+            var cwdPath = Path.Combine(Directory.GetCurrentDirectory(), "ComfyUiWorkflows", workflowFileName);
+            if (File.Exists(cwdPath))
+                return cwdPath;
+            
+            // Default: return the base directory path (will use default workflow if not found)
+            return baseDirPath;
+        }
 
         // Add agents
         services.AddScoped<SceneParserAgent>(sp =>
@@ -319,6 +394,15 @@ internal class Program
             return new VideoPromptVerifierAgent(aiProvider, logger, prompts);
         });
 
+        // Add image generation agent
+        services.AddScoped<Agents.Media.ImageGenerationAgent>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Agents.Media.ImageGenerationAgent>>();
+            var comfyUIClient = sp.GetRequiredService<ComfyUIClient>();
+            var workflowBuilder = sp.GetRequiredService<ComfyUIWorkflowBuilder>();
+            return new Agents.Media.ImageGenerationAgent(comfyUIClient, workflowBuilder, logger);
+        });
+
         // Add orchestrator
         services.AddSingleton<PipelineOrchestrator>(sp =>
         {
@@ -344,6 +428,8 @@ Options:
   --input, -i <file>        Path to input script file
   --script, -s <text>       Script text (directly on command line)
   --output, -o <path>       Output directory (default: ./output)
+  --generate-images, -g     Generate images from photo prompts using ComfyUI
+  --workflow, -w <path>     Path to ComfyUI workflow JSON (optional)
   --help, -h                Show this help message
 
 Examples:
@@ -351,19 +437,28 @@ Examples:
   # Interactive mode (default)
   dotnet run
 
-  # From file
+  # From file (prompts only, no image generation)
   dotnet run --title ""My Script"" --input script.txt --output ./output
+
+  # From file with image generation
+  dotnet run --title ""My Script"" --input script.txt --output ./output --generate-images
 
   # From command line
   dotnet run --title ""My Script"" --script ""FADE IN: INT. COFFEE SHOP - DAY...""
 
+  # With custom workflow
+  dotnet run --title ""My Script"" --input script.txt --generate-images --workflow ./my-workflow.json
+
   # Short form
-  dotnet run -t ""My Script"" -i script.txt -o ./output
+  dotnet run -t ""My Script"" -i script.txt -o ./output -g
 
 Output:
   Creates a folder: {Title}_{YYYY-MM-DD_HH-mm-ss}/
   ├── script.md           - Original script
   ├── scenes.md           - Parsed scenes
+  ├── photo-prompts.md    - Photo prompts
+  ├── video-prompts.md    - Video prompts
+  ├── images/             - Generated images (if --generate-images is used)
   └── agent-log.md        - Execution log
 ");
     }

@@ -119,6 +119,14 @@ public class SceneVerifierAgent : VerifierAgent<SceneVerificationInput>
     {
         // Extract JSON from markdown code blocks if present
         var json = ExtractJsonFromMarkdown(response);
+        
+        // Fix common JSON issues from AI models
+        // Replace unescaped newlines in strings with escaped newlines
+        json = FixUnescapedNewlinesInJson(json);
+        
+        // Replace Python-style None with JSON null
+        json = json.Replace(": None,", ": null,", StringComparison.OrdinalIgnoreCase)
+                   .Replace(": None}", ": null}", StringComparison.OrdinalIgnoreCase);
 
         try
         {
@@ -145,14 +153,14 @@ public class SceneVerifierAgent : VerifierAgent<SceneVerificationInput>
             if (result.Warnings.Any())
             {
                 // Check if warnings indicate missing story beats
-                var hasMissingContentWarning = result.Warnings.Any(w => 
+                var hasMissingContentWarning = result.Warnings.Any(w =>
                     w.Contains("missing", StringComparison.OrdinalIgnoreCase) ||
                     w.Contains("not fully captured", StringComparison.OrdinalIgnoreCase) ||
                     w.Contains("incomplete", StringComparison.OrdinalIgnoreCase) ||
                     w.Contains("should be created", StringComparison.OrdinalIgnoreCase) ||
                     w.Contains("split", StringComparison.OrdinalIgnoreCase) ||
                     w.Contains("separate scenes", StringComparison.OrdinalIgnoreCase));
-                
+
                 if (hasMissingContentWarning)
                 {
                     result.IsValid = false;
@@ -168,10 +176,62 @@ public class SceneVerifierAgent : VerifierAgent<SceneVerificationInput>
             // Log the problematic JSON for debugging
             var jsonPreview = json.Length > 2000 ? json.Substring(0, 2000) + $"... ({json.Length - 2000} more chars)" : json;
             _logger.LogError(ex, "JSON parsing failed. Problematic JSON:\n{Json}", jsonPreview);
-            
+
             // Re-throw with JSON context for error logging
             throw new JsonException($"JSON parsing failed. Problematic JSON preview: {jsonPreview}", ex);
         }
+    }
+
+    /// <summary>
+    /// Fixes unescaped newlines within JSON string values.
+    /// </summary>
+    /// <param name="json">The JSON string to fix.</param>
+    /// <returns>The JSON string with escaped newlines.</returns>
+    private static string FixUnescapedNewlinesInJson(string json)
+    {
+        // This is a simple fix - replace newlines that appear within quoted strings
+        // We look for patterns like: "text\nmore text" and replace with "text\nmore text"
+        var result = new System.Text.StringBuilder();
+        var inString = false;
+        var escaped = false;
+        
+        for (int i = 0; i < json.Length; i++)
+        {
+            var c = json[i];
+            
+            if (escaped)
+            {
+                result.Append(c);
+                escaped = false;
+                continue;
+            }
+            
+            if (c == '\\')
+            {
+                result.Append(c);
+                escaped = true;
+                continue;
+            }
+            
+            if (c == '"')
+            {
+                inString = !inString;
+                result.Append(c);
+                continue;
+            }
+            
+            if (inString && (c == '\r' || c == '\n'))
+            {
+                // Skip carriage return, only add escaped newline
+                if (c == '\r') continue;
+                result.Append("\\n");
+                continue;
+            }
+            
+            result.Append(c);
+        }
+        
+        return result.ToString();
     }
 
     /// <summary>

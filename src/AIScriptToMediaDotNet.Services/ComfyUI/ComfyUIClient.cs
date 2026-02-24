@@ -12,7 +12,6 @@ namespace AIScriptToMediaDotNet.Services.ComfyUI;
 public class ComfyUIClient
 {
     private readonly HttpClient _httpClient;
-    private readonly ComfyUIOptions _options;
     private readonly ILogger<ComfyUIClient> _logger;
     private readonly string _clientId;
 
@@ -20,17 +19,20 @@ public class ComfyUIClient
     /// Initializes a new instance of the ComfyUIClient class.
     /// </summary>
     /// <param name="httpClient">The HTTP client.</param>
-    /// <param name="options">The ComfyUI options.</param>
     /// <param name="logger">The logger instance.</param>
     public ComfyUIClient(
         HttpClient httpClient,
-        IOptions<ComfyUIOptions> options,
         ILogger<ComfyUIClient> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _clientId = Guid.NewGuid().ToString("N");
+        
+        // Ensure BaseAddress is set
+        if (_httpClient.BaseAddress == null)
+        {
+            _httpClient.BaseAddress = new Uri("http://localhost:8188");
+        }
     }
 
     /// <summary>
@@ -42,13 +44,13 @@ public class ComfyUIClient
     {
         try
         {
-            _logger.LogDebug("Testing ComfyUI connection to {Endpoint}", _options.Endpoint);
+            _logger.LogDebug("Testing ComfyUI connection to {Endpoint}", _httpClient.BaseAddress);
             var response = await _httpClient.GetAsync("system_stats", cancellationToken);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to connect to ComfyUI");
+            _logger.LogError(ex, "Failed to connect to ComfyUI at {Endpoint}", _httpClient.BaseAddress);
             return false;
         }
     }
@@ -57,9 +59,10 @@ public class ComfyUIClient
     /// Queues a prompt for generation.
     /// </summary>
     /// <param name="prompt">The workflow prompt.</param>
+    /// <param name="outputPath">Optional output path to save the request JSON for debugging.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The queue response with prompt ID.</returns>
-    public async Task<ComfyuiQueueResponse> QueuePromptAsync(ComfyuiPrompt prompt, CancellationToken cancellationToken = default)
+    public async Task<ComfyuiQueueResponse> QueuePromptAsync(ComfyuiPrompt prompt, string? outputPath = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Queueing prompt to ComfyUI");
 
@@ -69,8 +72,31 @@ public class ComfyUIClient
             client_id = _clientId
         };
 
-        var json = JsonSerializer.Serialize(requestBody);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions { WriteIndented = true });
+        
+        // Log the exact JSON being sent to ComfyUI for debugging
+        _logger.LogDebug("Sending JSON to ComfyUI:\n{Json}", json);
+        
+        // Save the JSON to the output folder if specified
+        if (!string.IsNullOrEmpty(outputPath))
+        {
+            try
+            {
+                var workflowsFolder = Path.Combine(outputPath, "workflows");
+                Directory.CreateDirectory(workflowsFolder);
+                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                var jsonFilePath = Path.Combine(workflowsFolder, $"sent_to_comfyui_{timestamp}.json");
+                File.WriteAllText(jsonFilePath, json);
+                _logger.LogInformation("Request JSON saved to: {FilePath}", jsonFilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save request JSON to output folder");
+            }
+        }
+        
+        var content = new StringContent(json, Encoding.UTF8);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
 
         var response = await _httpClient.PostAsync("prompt", content, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -202,20 +228,23 @@ public class ComfyUIClient
         string outputPath,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Downloading image {Filename} to {OutputPath}", 
+        _logger.LogInformation("Downloading image {Filename} to {OutputPath}",
             image.Filename, outputPath);
 
-        // Create output directory if it doesn't exist
+        // Ensure output directory exists
         Directory.CreateDirectory(outputPath);
 
-        // Build the download URL
+        // Build the download URL - ignore subfolder from ComfyUI, save directly to outputPath
         var downloadUrl = $"view?filename={image.Filename}&subfolder={image.Subfolder}&type={image.Type}";
-        
+        _logger.LogDebug("Download URL: {Url}", downloadUrl);
+
         var response = await _httpClient.GetAsync(downloadUrl, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        // Save the image
+        // Save the image directly to outputPath (not in a subfolder)
         var outputPathFull = Path.Combine(outputPath, image.Filename);
+        _logger.LogDebug("Saving to: {Path}", outputPathFull);
+        
         await using var fileStream = new FileStream(outputPathFull, FileMode.Create, FileAccess.Write);
         await response.Content.CopyToAsync(fileStream, cancellationToken);
 
@@ -306,33 +335,52 @@ public class ComfyUIClient
     {
         _logger.LogInformation("Starting image generation");
 
-        // Queue the prompt
-        var queueResponse = await QueuePromptAsync(prompt, cancellationToken);
-
-        // Wait for completion
-        var status = await WaitForCompletionAsync(
-            queueResponse.PromptId, 
-            timeoutSeconds, 
-            1000, 
-            cancellationToken);
-
-        if (!status.Completed)
+        try
         {
-            throw new InvalidOperationException($"Generation failed: {string.Join("; ", status.Messages)}");
+            // Queue the prompt
+            var queueResponse = await QueuePromptAsync(prompt, outputPath, cancellationToken);
+            _logger.LogInformation("Prompt queued with ID: {PromptId}, waiting for completion...", queueResponse.PromptId);
+
+            // Wait for completion
+            var status = await WaitForCompletionAsync(
+                queueResponse.PromptId,
+                timeoutSeconds,
+                1000,
+                cancellationToken);
+
+            if (!status.Completed)
+            {
+                _logger.LogError("Image generation failed: {Errors}", string.Join("; ", status.Messages));
+                throw new InvalidOperationException($"Generation failed: {string.Join("; ", status.Messages)}");
+            }
+
+            _logger.LogInformation("Generation completed successfully, retrieving images...");
+
+            // Get generated images
+            var images = await GetGeneratedImagesAsync(queueResponse.PromptId, cancellationToken);
+            _logger.LogInformation("Found {ImageCount} images to download", images.Count);
+
+            if (!images.Any())
+            {
+                _logger.LogWarning("No images found in ComfyUI output for prompt {PromptId}", queueResponse.PromptId);
+                return new List<string>();
+            }
+
+            // Download all images
+            var downloadedPaths = new List<string>();
+            foreach (var image in images)
+            {
+                var path = await DownloadImageAsync(image, outputPath, cancellationToken);
+                downloadedPaths.Add(path);
+            }
+
+            _logger.LogInformation("Successfully generated and downloaded {ImageCount} images", downloadedPaths.Count);
+            return downloadedPaths;
         }
-
-        // Get generated images
-        var images = await GetGeneratedImagesAsync(queueResponse.PromptId, cancellationToken);
-
-        // Download all images
-        var downloadedPaths = new List<string>();
-        foreach (var image in images)
+        catch (Exception ex)
         {
-            var path = await DownloadImageAsync(image, outputPath, cancellationToken);
-            downloadedPaths.Add(path);
+            _logger.LogError(ex, "Image generation failed with exception");
+            throw;
         }
-
-        _logger.LogInformation("Generated {ImageCount} images", downloadedPaths.Count);
-        return downloadedPaths;
     }
 }

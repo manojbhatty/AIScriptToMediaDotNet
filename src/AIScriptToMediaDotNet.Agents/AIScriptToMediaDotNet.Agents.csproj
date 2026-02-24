@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AIScriptToMediaDotNet.Core\AIScriptToMediaDotNet.Core.csproj" />
+    <ProjectReference Include="..\AIScriptToMediaDotNet.Services\AIScriptToMediaDotNet.Services.csproj" />
   </ItemGroup>
 
   <ItemGroup>

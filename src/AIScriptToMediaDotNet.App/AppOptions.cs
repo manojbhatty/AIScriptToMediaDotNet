@@ -29,4 +29,14 @@ public class AppOptions
     /// Gets or sets a value indicating whether to run in interactive mode.
     /// </summary>
     public bool Interactive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to generate images from photo prompts.
+    /// </summary>
+    public bool GenerateImages { get; set; }
+
+    /// <summary>
+    /// Gets or sets the path to the ComfyUI workflow JSON file.
+    /// </summary>
+    public string? WorkflowPath { get; set; }
 }

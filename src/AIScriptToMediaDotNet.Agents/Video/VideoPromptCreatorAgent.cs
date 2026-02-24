@@ -135,6 +135,13 @@ public class VideoPromptCreatorAgent : CreatorAgent<VideoPromptCreatorInput, Lis
         // Extract JSON from markdown code blocks if present
         var json = ExtractJsonFromMarkdown(response);
         
+        // Fix common JSON issues from AI models
+        // Replace Python-style None with JSON null
+        json = json.Replace(": None,", ": null,", StringComparison.OrdinalIgnoreCase)
+                   .Replace(": None}", ": null}", StringComparison.OrdinalIgnoreCase)
+                   .Replace(": None\r\n", ": null\r\n", StringComparison.OrdinalIgnoreCase)
+                   .Replace(": None\n", ": null\n", StringComparison.OrdinalIgnoreCase);
+
         try
         {
             var options = new JsonSerializerOptions
@@ -168,7 +175,7 @@ public class VideoPromptCreatorAgent : CreatorAgent<VideoPromptCreatorInput, Lis
             // Log the problematic JSON for debugging
             var jsonPreview = json.Length > 2000 ? json.Substring(0, 2000) + $"... ({json.Length - 2000} more chars)" : json;
             _logger.LogError(ex, "JSON parsing failed. Problematic JSON:\n{Json}", jsonPreview);
-            
+
             // Re-throw with JSON context for error logging
             throw new JsonException($"JSON parsing failed. Problematic JSON preview: {jsonPreview}", ex);
         }

@@ -1,6 +1,7 @@
 using AIScriptToMediaDotNet.Agents.Scene;
 using AIScriptToMediaDotNet.Agents.Photo;
 using AIScriptToMediaDotNet.Agents.Video;
+using AIScriptToMediaDotNet.Agents.Media;
 using AIScriptToMediaDotNet.Core.Agents;
 using AIScriptToMediaDotNet.Core.Context;
 using AIScriptToMediaDotNet.Core.Logging;
@@ -15,6 +16,8 @@ using PhotoPromptCreatorInput = AIScriptToMediaDotNet.Agents.Photo.PhotoPromptCr
 using PhotoPromptVerificationInput = AIScriptToMediaDotNet.Agents.Photo.PhotoPromptVerificationInput;
 using VideoPromptCreatorInput = AIScriptToMediaDotNet.Agents.Video.VideoPromptCreatorInput;
 using VideoPromptVerificationInput = AIScriptToMediaDotNet.Agents.Video.VideoPromptVerificationInput;
+using ImageGenerationInput = AIScriptToMediaDotNet.Agents.Media.ImageGenerationInput;
+using ImageGenerationResult = AIScriptToMediaDotNet.Agents.Media.ImageGenerationResult;
 
 namespace AIScriptToMediaDotNet.App;
 
@@ -30,6 +33,7 @@ public class ScriptToMediaService
     private readonly PhotoPromptVerifierAgent _photoPromptVerifier;
     private readonly VideoPromptCreatorAgent _videoPromptCreator;
     private readonly VideoPromptVerifierAgent _videoPromptVerifier;
+    private readonly ImageGenerationAgent _imageGenerator;
     private readonly ILogger<ScriptToMediaService> _logger;
     private readonly PipelineExecutionContext _executionContext;
 
@@ -43,6 +47,7 @@ public class ScriptToMediaService
     /// <param name="photoPromptVerifier">The photo prompt verifier agent.</param>
     /// <param name="videoPromptCreator">The video prompt creator agent.</param>
     /// <param name="videoPromptVerifier">The video prompt verifier agent.</param>
+    /// <param name="imageGenerator">The image generation agent.</param>
     /// <param name="logger">The logger instance.</param>
     public ScriptToMediaService(
         PipelineOrchestrator orchestrator,
@@ -52,6 +57,7 @@ public class ScriptToMediaService
         PhotoPromptVerifierAgent photoPromptVerifier,
         VideoPromptCreatorAgent videoPromptCreator,
         VideoPromptVerifierAgent videoPromptVerifier,
+        ImageGenerationAgent imageGenerator,
         ILogger<ScriptToMediaService> logger)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
@@ -61,6 +67,7 @@ public class ScriptToMediaService
         _photoPromptVerifier = photoPromptVerifier ?? throw new ArgumentNullException(nameof(photoPromptVerifier));
         _videoPromptCreator = videoPromptCreator ?? throw new ArgumentNullException(nameof(videoPromptCreator));
         _videoPromptVerifier = videoPromptVerifier ?? throw new ArgumentNullException(nameof(videoPromptVerifier));
+        _imageGenerator = imageGenerator ?? throw new ArgumentNullException(nameof(imageGenerator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _executionContext = new PipelineExecutionContext();
     }
@@ -71,21 +78,30 @@ public class ScriptToMediaService
     /// <param name="title">The script title.</param>
     /// <param name="script">The script text.</param>
     /// <param name="outputPath">The output directory path.</param>
+    /// <param name="generateImages">Whether to generate images from photo prompts.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The pipeline context with all generated data.</returns>
     public async Task<ScriptToMediaContext> ProcessScriptAsync(
         string title,
         string script,
         string outputPath,
+        bool generateImages = false,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting pipeline for: {Title}", title);
 
+        // Create the output folder at the START so all outputs go there
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
+        var folderName = $"{SanitizeFileName(title)}_{timestamp}";
+        var outputFolder = Path.Combine(outputPath ?? "./output", folderName);
+        Directory.CreateDirectory(outputFolder);
+        _logger.LogInformation("Output folder: {OutputFolder}", outputFolder);
+
         // Initialize execution context for detailed logging
         _executionContext.Title = title;
         _executionContext.FullScript = script;
-        _executionContext.ScriptSummary = script.Length > 1000 
-            ? script.Substring(0, 1000) + $"... ({script.Length - 1000} more chars)" 
+        _executionContext.ScriptSummary = script.Length > 1000
+            ? script.Substring(0, 1000) + $"... ({script.Length - 1000} more chars)"
             : script;
         _executionContext.ConfigurationSnapshot["Ollama.Endpoint"] = "http://localhost:11434";
         _executionContext.ConfigurationSnapshot["Ollama.DefaultModel"] = "qwen2.5-coder:latest";
@@ -96,7 +112,9 @@ public class ScriptToMediaService
         {
             Title = title,
             OriginalScript = script,
-            MaxRetriesPerStage = 3
+            MaxRetriesPerStage = 3,
+            OutputPath = outputFolder,  // Use the timestamped folder
+            GenerateImages = generateImages
         };
 
         try
@@ -263,16 +281,60 @@ public class ScriptToMediaService
 
             _logger.LogInformation("Video prompts verified successfully");
 
+            // Stage 7: Image Generation (optional)
+            if (context.GenerateImages && context.PhotoPrompts.Any())
+            {
+                _logger.LogInformation("Stage 7: Generating images from photo prompts...");
+                var imagesGenerated = await _orchestrator.ExecuteStageAsync<ImageGenerationInput, ImageGenerationResult>(
+                    context,
+                    "ImageGeneration",
+                    _imageGenerator,
+                    ctx => new ImageGenerationInput
+                    {
+                        PhotoPrompts = ctx.PhotoPrompts,
+                        OutputPath = outputPath ?? "./output"
+                    },
+                    (ctx, result) =>
+                    {
+                        ctx.GeneratedImages = result.Images;
+                    },
+                    cancellationToken,
+                    _executionContext);
+
+                if (!imagesGenerated)
+                {
+                    _logger.LogWarning("Image generation failed after all retries");
+                    _executionContext.LogAgentComplete("ImageGenerator", "ImageGeneration", 
+                        "Failed but pipeline continues", null, 0);
+                    // Don't fail the pipeline - image generation is optional
+                }
+                else
+                {
+                    _logger.LogInformation("Successfully generated {ImageCount} images", context.GeneratedImages.Count);
+                    _executionContext.LogAgentComplete("ImageGenerator", "ImageGeneration",
+                        $"{context.GeneratedImages.Count} images generated",
+                        PipelineExecutionContext.SerializeToJson(context.GeneratedImages), 0);
+                }
+            }
+            else if (!context.GenerateImages)
+            {
+                _logger.LogInformation("Image generation skipped (disabled by option)");
+            }
+            else
+            {
+                _logger.LogInformation("Image generation skipped (no photo prompts available)");
+            }
+
             // Log pipeline status
             var status = _orchestrator.GetPipelineStatus(context);
             _logger.LogInformation("Pipeline Status:\n{Status}", status);
 
             // Export results
-            var outputFolder = Export.MarkdownExporter.Export(context, outputPath);
-            _logger.LogInformation("Output exported to: {OutputFolder}", outputFolder);
+            var exportedFolder = Export.MarkdownExporter.Export(context, outputPath);
+            _logger.LogInformation("Output exported to: {OutputFolder}", exportedFolder);
 
             // Export detailed execution log
-            var executionLogPath = Path.Combine(outputFolder, "execution-log.md");
+            var executionLogPath = Path.Combine(exportedFolder, "execution-log.md");
             _executionContext.Complete("Success");
             ExecutionLogExporter.Export(_executionContext, executionLogPath);
             _logger.LogInformation("Execution log exported to: {ExecutionLogPath}", executionLogPath);
@@ -342,7 +404,7 @@ public class ScriptToMediaService
                 md.AppendLine($"**Time:** {error.Timestamp:yyyy-MM-dd HH:mm:ss}\n\n");
                 md.AppendLine($"**Event:** {error.Event}\n\n");
                 md.AppendLine($"**Message:** {error.Message}\n\n");
-                
+
                 if (!string.IsNullOrEmpty(error.ErrorDetails))
                 {
                     md.AppendLine("**Error Details:**\n\n");
@@ -350,7 +412,7 @@ public class ScriptToMediaService
                     md.AppendLine(error.ErrorDetails);
                     md.AppendLine("```\n\n");
                 }
-                
+
                 // Add input information
                 if (!string.IsNullOrEmpty(error.InputSummary) || !string.IsNullOrEmpty(error.InputData))
                 {
@@ -369,7 +431,7 @@ public class ScriptToMediaService
                         md.AppendLine("```\n\n");
                     }
                 }
-                
+
                 // Add output information (if available - e.g., verifier output before failure)
                 if (!string.IsNullOrEmpty(error.OutputSummary) || !string.IsNullOrEmpty(error.OutputData))
                 {
@@ -388,7 +450,7 @@ public class ScriptToMediaService
                         md.AppendLine("```\n\n");
                     }
                 }
-                
+
                 if (error.RetryCount.HasValue)
                 {
                     md.AppendLine($"**Retry Count:** {error.RetryCount}\n\n");
@@ -420,5 +482,16 @@ public class ScriptToMediaService
         md.AppendLine($"- **Failed Stages:** {errors.Select(e => e.Stage).Distinct().Count()}\n");
 
         File.WriteAllText(outputPath, md.ToString());
+    }
+
+    /// <summary>
+    /// Sanitizes a filename by removing invalid characters.
+    /// </summary>
+    /// <param name="name">The name to sanitize.</param>
+    /// <returns>A sanitized filename.</returns>
+    private static string SanitizeFileName(string name)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars();
+        return string.Join("_", name.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries)).Trim();
     }
 }

@@ -11,15 +11,14 @@ public static class MarkdownExporter
     /// Exports all context data to markdown files in the output directory.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
-    /// <param name="outputPath">The output directory path.</param>
+    /// <param name="outputPath">The output directory path (already created by ScriptToMediaService).</param>
     /// <returns>Path to the created output folder.</returns>
     public static string Export(ScriptToMediaContext context, string outputPath)
     {
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
-        var folderName = $"{SanitizeFileName(context.Title)}_{timestamp}";
-        var outputFolder = Path.Combine(outputPath, folderName);
-
-        Directory.CreateDirectory(outputFolder);
+        // Use the output folder from context if available, otherwise create one
+        var outputFolder = !string.IsNullOrEmpty(context.OutputPath) && Directory.Exists(context.OutputPath)
+            ? context.OutputPath
+            : CreateOutputFolder(context, outputPath);
 
         // Export script
         var scriptPath = Path.Combine(outputFolder, "script.md");
@@ -37,10 +36,32 @@ public static class MarkdownExporter
         var videoPromptsPath = Path.Combine(outputFolder, "video-prompts.md");
         File.WriteAllText(videoPromptsPath, ExportVideoPrompts(context.VideoPrompts));
 
+        // Export generated images
+        if (context.GeneratedImages.Any())
+        {
+            var imagesPath = Path.Combine(outputFolder, "generated-images.md");
+            File.WriteAllText(imagesPath, ExportGeneratedImages(context.GeneratedImages));
+        }
+
         // Export agent log
         var logPath = Path.Combine(outputFolder, "agent-log.md");
         File.WriteAllText(logPath, ExportAgentLog(context));
 
+        return outputFolder;
+    }
+
+    /// <summary>
+    /// Creates a new output folder with timestamp.
+    /// </summary>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="outputPath">The base output path.</param>
+    /// <returns>The path to the created folder.</returns>
+    private static string CreateOutputFolder(ScriptToMediaContext context, string outputPath)
+    {
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
+        var folderName = $"{SanitizeFileName(context.Title)}_{timestamp}";
+        var outputFolder = Path.Combine(outputPath, folderName);
+        Directory.CreateDirectory(outputFolder);
         return outputFolder;
     }
 
@@ -235,6 +256,45 @@ public static class MarkdownExporter
         md.AppendLine($"- **Scenes:** {context.Scenes.Count}\n");
         md.AppendLine($"- **Photo Prompts:** {context.PhotoPrompts.Count}\n");
         md.AppendLine($"- **Video Prompts:** {context.VideoPrompts.Count}\n");
+        md.AppendLine($"- **Generated Images:** {context.GeneratedImages.Count}\n");
+
+        return md.ToString();
+    }
+
+    /// <summary>
+    /// Exports generated images to markdown format.
+    /// </summary>
+    /// <param name="images">The list of generated images.</param>
+    /// <returns>Markdown string.</returns>
+    private static string ExportGeneratedImages(List<GeneratedImage> images)
+    {
+        var md = new System.Text.StringBuilder();
+        md.AppendLine("# Generated Images\n\n");
+        md.AppendLine($"**Total Images:** {images.Count}\n\n");
+
+        var successful = images.Where(i => i.Success).ToList();
+        var failed = images.Where(i => !i.Success).ToList();
+
+        if (successful.Any())
+        {
+            md.AppendLine("## Successful Generations\n\n");
+            foreach (var image in successful)
+            {
+                md.AppendLine($"### {image.PromptId} (Scene {image.SceneId})\n\n");
+                md.AppendLine($"- **File:** `{image.FilePath}`\n");
+                md.AppendLine($"- **Generated:** {image.GeneratedAt:yyyy-MM-dd HH:mm:ss}\n\n");
+            }
+        }
+
+        if (failed.Any())
+        {
+            md.AppendLine("## Failed Generations\n\n");
+            foreach (var image in failed)
+            {
+                md.AppendLine($"### {image.PromptId} (Scene {image.SceneId})\n\n");
+                md.AppendLine($"- **Error:** {image.ErrorMessage}\n\n");
+            }
+        }
 
         return md.ToString();
     }

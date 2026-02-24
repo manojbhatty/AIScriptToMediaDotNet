@@ -23,16 +23,14 @@ public static class ComfyUIServiceCollectionExtensions
             services.Configure(configureOptions);
         }
 
-        // Configure HttpClient for ComfyUI
+        // Configure HttpClient for ComfyUI using IOptionsSnapshot for runtime resolution
         services.AddHttpClient<ComfyUIClient>((serviceProvider, client) =>
         {
-            var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ComfyUIOptions>>().Value;
-            client.BaseAddress = new Uri(options.Endpoint);
+            var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptionsSnapshot<ComfyUIOptions>>().Value;
+            var endpoint = options.Endpoint ?? "http://127.0.0.1:8188";
+            client.BaseAddress = new Uri(endpoint);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
-
-        // Register as singleton (shared HTTP client)
-        services.AddScoped<ComfyUIClient>();
 
         return services;
     }
@@ -49,14 +47,14 @@ public static class ComfyUIServiceCollectionExtensions
     {
         services.Configure<ComfyUIOptions>(configurationSection);
 
+        // Configure HttpClient for ComfyUI
         services.AddHttpClient<ComfyUIClient>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ComfyUIOptions>>().Value;
-            client.BaseAddress = new Uri(options.Endpoint);
+            var endpoint = options.Endpoint ?? "http://127.0.0.1:8188";
+            client.BaseAddress = new Uri(endpoint);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
-
-        services.AddScoped<ComfyUIClient>();
 
         return services;
     }

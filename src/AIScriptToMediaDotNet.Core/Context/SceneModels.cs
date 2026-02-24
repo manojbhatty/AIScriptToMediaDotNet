@@ -176,3 +176,53 @@ public class VideoPrompt
         return $"[{Id}] Scene {SceneId}: {Prompt[..Math.Min(50, Prompt.Length)]}...";
     }
 }
+
+/// <summary>
+/// Represents a generated image from ComfyUI.
+/// </summary>
+public class GeneratedImage
+{
+    /// <summary>
+    /// Gets or sets the prompt ID this image was generated from.
+    /// </summary>
+    public string PromptId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the scene ID this image is for.
+    /// </summary>
+    public string SceneId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the photo prompt ID.
+    /// </summary>
+    public string PhotoPromptId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the file path to the generated image.
+    /// </summary>
+    public string FilePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the generation was successful.
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// Gets or sets the error message if generation failed.
+    /// </summary>
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the generation timestamp.
+    /// </summary>
+    public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Creates a string representation of the generated image.
+    /// </summary>
+    /// <returns>A formatted image string.</returns>
+    public override string ToString()
+    {
+        return $"[{PromptId}] Scene {SceneId}: {FilePath} - {(Success ? "Success" : $"Failed: {ErrorMessage}")}";
+    }
+}

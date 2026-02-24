@@ -155,6 +155,16 @@ public class ScriptToMediaContext
     public List<VideoPrompt> VideoPrompts { get; set; } = new();
 
     /// <summary>
+    /// Gets or sets the list of generated images.
+    /// </summary>
+    public List<GeneratedImage> GeneratedImages { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to generate images from photo prompts.
+    /// </summary>
+    public bool GenerateImages { get; set; }
+
+    /// <summary>
     /// Gets or sets the output directory path.
     /// </summary>
     public string? OutputPath { get; set; }
@@ -323,16 +333,17 @@ public class ScriptToMediaContext
             Context: {Id} - "{Title}"
             Created: {CreatedAt:yyyy-MM-dd HH:mm:ss}
             Updated: {UpdatedAt:yyyy-MM-dd HH:mm:ss}
-            
+
             Content:
               - Original Script: {OriginalScript.Length} chars
               - Scenes: {Scenes.Count}
               - Photo Prompts: {PhotoPrompts.Count}
               - Video Prompts: {VideoPrompts.Count}
-            
+              - Generated Images: {GeneratedImages.Count}
+
             Pipeline Status: {CurrentStage}
             Total Retries: {TotalRetryCount}
-            
+
             Stage States:
             {string.Join(Environment.NewLine, _stageStates.Values.Select(s => $"  - {s.StageName}: {(s.IsComplete ? "✓ Complete" : s.HasFailed ? "✗ Failed" : "In Progress")} (Retries: {s.RetryCount})"))}
             """;

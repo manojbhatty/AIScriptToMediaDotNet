@@ -10,7 +10,7 @@ Multi-agent AI script-to-media transformation system.
 
 **Last Updated**: 2026-02-25
 
-**Current Status**: Core pipeline complete (scenes → photo prompts → video prompts → export). Image generation feature (COMFY-001, COMFY-002) was implemented and subsequently removed to simplify the application and remove external service dependencies.
+**Current Status**: Core pipeline complete (scenes → photo prompts → video prompts → export → optional image generation). ComfyUI image generation feature implemented with workflow template provider, sequential processing, and configurable pipeline options.
 
 **Completed Epics**:
 - ✅ Core Infrastructure (CORE-001 through CORE-005)
@@ -19,25 +19,34 @@ Multi-agent AI script-to-media transformation system.
 - ✅ Video Prompt Pipeline (VIDEO-001, VIDEO-002)
 - ✅ Export & Output (EXPORT-001, EXPORT-002)
 - ✅ Extensibility Foundation (EXT-006, EXT-007)
+- ✅ ComfyUI Integration (COMFY-001, COMFY-002)
 
 **In Progress**:
-- 🔄 TECH-001: Technical Debt Cleanup (COMFY Removal) - Includes closing obsolete GitHub issues #43, #44
+- 🔄 TECH-001: Technical Debt Cleanup - Code cleanup and documentation updates
 
 **Open GitHub Issues**: 6
-- #49: Enhancement: Add an option to continue the pipeline even if verifications fail (2026-02-25)
-- #48: Enhancement: Display a summary of why the pipeline failed at the end in console (2026-02-25)
-- #47: Enhancement: Move retry counts to appsettings (2026-02-25)
-- #46: Epic: Update the app to use MAF (2026-02-25)
-- #44: Critical BUg: Create images one at a time (2026-02-24) - *Obsolete - ComfyUI removed*
-- #43: Enhancement: ComfyUI image generation enhancements (2026-02-24) - *Obsolete - ComfyUI removed*
+- #49: Enhancement: Add an option to continue the pipeline even if verifications fail (2026-02-25) - ✅ **COMPLETED**
+- #48: Enhancement: Display a summary of why the pipeline failed at the end in console (2026-02-25) - ✅ **COMPLETED**
+- #47: Enhancement: Move retry counts to appsettings (2026-02-25) - ✅ **COMPLETED**
+- #46: Epic: Update the app to use MAF (2026-02-25) - *Not Started*
+- #44: Critical BUg: Create images one at a time (2026-02-24) - ✅ **COMPLETED** (sequential processing implemented)
+- #43: Enhancement: ComfyUI image generation enhancements (2026-02-24) - ✅ **COMPLETED**
+
+**Recently Completed** (2026-02-25):
+- ✅ Workflow template provider with file-based and in-memory implementations
+- ✅ WorkflowNodeMapping for flexible ComfyUI node configuration
+- ✅ PipelineOptions class for centralized configuration
+- ✅ Per-agent retry counts and best-attempt-on-failure settings
+- ✅ Failure summary display in console output
+- ✅ Enhanced verifier feedback for retry attempts
+- ✅ Custom retry logic per stage in PipelineOrchestrator
 
 **Future Considerations**:
-- Re-implement image generation with sequential processing (one image at a time)
-- Save generated images in output folder with other artifacts
 - Cloud AI providers (OpenAI, Anthropic)
 - Character consistency tracking
 - Visual style guide configuration
 - Human-in-the-loop approval workflow
+- MAF (Model Context Protocol) integration
 
 ---
 
@@ -385,11 +394,10 @@ flowchart TB
 
 ### [COMFY-001] ComfyUI Client
 **Priority**: P0
-**Status**: ✅ Done → Removed
-**GitHub**: [#42](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/42)
-**Completed**: 2026-02-24
-**Branch**: `feature/COMFY-001-client`
-**Removed**: 2026-02-24 (feature/COMFY-002-image-agent branch)
+**Status**: ✅ Done
+**GitHub**: [#42](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/42)
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
 **As a** media generator
 **I want** a ComfyUI API client
@@ -402,18 +410,19 @@ flowchart TB
 - [x] Downloads generated images
 - [x] Handles errors and timeouts
 - [x] Configurable via appsettings.json
+- [x] Workflow template provider with file-based and in-memory implementations
+- [x] WorkflowNodeMapping for flexible node configuration
 
-**Notes**: Implementation completed but subsequently removed in feature/COMFY-002-image-agent to simplify the pipeline and remove external service dependencies.
+**Notes**: Fully implemented with sequential image processing and configurable workflow templates.
 
 ---
 
 ### [COMFY-002] Image Generation Agent
 **Priority**: P0
-**Status**: ✅ Done → Removed
-**GitHub**: [#45](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/45)
-**Completed**: 2026-02-24
-**Branch**: `feature/COMFY-002-image-agent`
-**Removed**: 2026-02-24 (same branch)
+**Status**: ✅ Done
+**GitHub**: [#45](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/45)
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
 **As a** production system
 **I want** an agent that manages ComfyUI image generation
@@ -427,8 +436,10 @@ flowchart TB
 - [x] Reports failures/successes
 - [x] Uses ComfyUIWorkflowBuilder for dynamic prompt generation
 - [x] Handles generation errors gracefully
+- [x] **Images generated one at a time** (sequential processing)
+- [x] **Saves images in output folder** with other artifacts
 
-**Notes**: Implementation completed but subsequently removed to simplify the pipeline. The application now focuses on script-to-prompt generation only, without image generation dependencies.
+**Notes**: Fully implemented with sequential processing (addresses issue #44) and all enhancements from issue #43.
 
 ---
 
@@ -592,88 +603,111 @@ flowchart TB
 
 ### [CONFIG-001] Move Retry Counts to appsettings
 **Priority**: P2
-**Status**: Open
+**Status**: ✅ Done
 **GitHub**: [#47](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/47)
 **Created**: 2026-02-25
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
 **As a** system administrator
 **I want** retry counts to be configurable in appsettings.json
 **So that** I can tune retry behavior without code changes
 
 **Acceptance Criteria**:
-- [ ] Add `RetryCount` configuration to appsettings.json
-- [ ] Add `MaxRetries` per stage configuration option
-- [ ] Update orchestrator to read retry counts from configuration
-- [ ] Add configuration validation
-- [ ] Update documentation
+- [x] Add `RetryCount` configuration to appsettings.json via `Pipeline:MaxRetriesPerStage`
+- [x] Add `MaxRetries` per stage configuration option via `Pipeline:MaxRetriesPerAgent`
+- [x] Update orchestrator to read retry counts from configuration
+- [x] Add configuration validation
+- [x] Update documentation
+
+**Implementation**:
+- `PipelineOptions` class provides centralized configuration
+- Per-agent overrides via `MaxRetriesPerAgent` dictionary
+- Best-attempt-on-failure option via `UseBestAttemptOnFailure`
 
 ---
 
 ### [UX-001] Display Failure Summary in Console
 **Priority**: P2
-**Status**: Open
+**Status**: ✅ Done
 **GitHub**: [#48](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/48)
 **Created**: 2026-02-25
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
 **As a** user
 **I want** to see a summary of why the pipeline failed in the console
 **So that** I can quickly understand what went wrong without digging into logs
 
 **Acceptance Criteria**:
-- [ ] Capture failure reason at each pipeline stage
-- [ ] Display concise failure summary at the end of execution
-- [ ] Include stage name, error message, and retry count
-- [ ] Format output for readability (colors, indentation)
-- [ ] Point to detailed log files for more information
+- [x] Capture failure reason at each pipeline stage
+- [x] Display concise failure summary at the end of execution
+- [x] Include stage name, error message, and retry count
+- [x] Format output for readability (colors, indentation)
+- [x] Point to detailed log files for more information
+
+**Implementation**:
+- Failure summary displayed in console with "FAILURE SUMMARY" header
+- Errors listed with ❌ icons for visibility
+- Points to detailed error log file location
 
 ---
 
 ### [UX-002] Continue Pipeline on Verification Failures
 **Priority**: P2
-**Status**: Open
+**Status**: ✅ Done
 **GitHub**: [#49](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/49)
 **Created**: 2026-02-25
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
 **As a** user
 **I want** an option to continue the pipeline even if verifications fail
 **So that** I can still get output for review even with validation issues
 
 **Acceptance Criteria**:
-- [ ] Add `ContinueOnVerificationFailure` configuration option
-- [ ] Update orchestrator to respect the setting
-- [ ] Log warnings when continuing despite failures
-- [ ] Mark output files with validation warnings
-- [ ] Include validation errors in export for review
+- [x] Add `ContinueOnVerificationFailure` configuration option (implemented as `UseBestAttemptOnFailure`)
+- [x] Update orchestrator to respect the setting
+- [x] Log warnings when continuing despite failures
+- [x] Mark output files with validation warnings
+- [x] Include validation errors in export for review
+
+**Implementation**:
+- `UseBestAttemptOnFailure` global setting in `PipelineOptions`
+- `UseBestAttemptOnFailurePerAgent` for per-stage control
+- Selects best attempt (fewest errors) when all retries fail
+- Warnings logged when using best-attempt fallback
 
 ---
 
-### [TECH-001] Technical Debt Cleanup (COMFY Removal)
+### [TECH-001] Technical Debt Cleanup
 **Priority**: P1
 **Status**: In Progress
-**Branch**: `feature/COMFY-002-image-agent`
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
 **As a** developer
-**I want** to clean up technical debt from the ComfyUI feature removal
+**I want** to clean up technical debt and update documentation
 **So that** the codebase remains clean and maintainable
 
 **Acceptance Criteria**:
-- [ ] Remove all references to `GeneratedImage` from context and models
-- [ ] Remove image generation stage from pipeline orchestrator
-- [ ] Clean up unused using statements and imports
-- [ ] Remove ComfyUI configuration from appsettings.json (or mark as optional)
-- [ ] Update README to reflect removed image generation feature
-- [ ] Remove workflow JSON files from ComfyUiWorkflows folder
-- [ ] Clean up any dead code related to image generation
-- [ ] Verify all tests pass without image generation dependencies
-- [ ] Update XML documentation to remove image generation references
-- [ ] **Close GitHub issues #43 and #44** with note that feature was removed
-- [ ] **Address new issues #46, #47, #48, #49** or create separate backlog items
+- [x] Implement ComfyUI workflow template provider
+- [x] Add workflow node mapping configuration
+- [x] Create PipelineOptions class for centralized configuration
+- [x] Implement per-agent retry configuration
+- [x] Add failure summary display in console
+- [x] Enhance verifier feedback for retries
+- [x] Update backlog with completion status
+- [ ] Update README with ComfyUI feature documentation
+- [ ] Update running-book.md with ComfyUI usage guide
+- [ ] Clean up any unused code or comments
+- [ ] Verify all tests pass
+- [ ] **Close GitHub issues #43, #44, #47, #48, #49** as completed
 
 ---
 
 ## Current Sprint / Focus
 
-**Active**: Simplifying pipeline - Image generation removed
+**Active**: ComfyUI Image Generation Implementation
 
 **Completed**:
 - CORE-002: AI Provider Abstraction ✅
@@ -690,12 +724,15 @@ flowchart TB
 - EXPORT-002: Agent Execution Logger ✅
 - EXT-006: Verify Logging ✅
 - EXT-007: Move Prompts to Separate Files ✅
-- COMFY-001: ComfyUI Client ✅ (Removed)
-- COMFY-002: Image Generation Agent ✅ (Removed)
+- COMFY-001: ComfyUI Client ✅
+- COMFY-002: Image Generation Agent ✅
+- CONFIG-001: Move Retry Counts to appsettings ✅
+- UX-001: Display Failure Summary in Console ✅
+- UX-002: Continue Pipeline on Verification Failures ✅
 
 **Next Up**:
-- TECH-001: Technical Debt Cleanup (COMFY Removal) - In Progress
-- Performance optimization for AI prompt generation
+- TECH-001: Complete documentation updates and cleanup
+- MAF-001: Research and implement Model Context Protocol
 - EXT-001/EXT-002: Additional AI provider support (OpenAI, Anthropic)
 - EXT-003: Character Consistency Tracker
 - EXT-004: Style Guide Configuration
@@ -708,41 +745,54 @@ flowchart TB
 
 | Issue | Title | Status | Labels | Created |
 |-------|-------|--------|--------|---------|
-| #49 | Enhancement: Add an option to continue the pipeline even if verifications fail | **OPEN** | - | 2026-02-25 |
-| #48 | Enhancement: Display a summary of why the pipeline failed at the end in console | **OPEN** | - | 2026-02-25 |
-| #47 | Enhancement: Move retry counts to appsettings | **OPEN** | - | 2026-02-25 |
 | #46 | Epic: Update the app to use MAF | **OPEN** | - | 2026-02-25 |
-| #44 | Critical BUg: Create images one at a time | **OPEN** | - | 2026-02-24 |
-| #43 | Enhancement: ComfyUI image generation enhancements | **OPEN** | - | 2026-02-24 |
 
-**⚠️ Note on Open Issues**: 
-- Issues #43 and #44 relate to the ComfyUI image generation feature which was **removed** from the codebase on 2026-02-24. These issues should be **closed** or **converted** to future enhancement requests when image generation is re-added.
-- Issues #46, #47, #48, #49 are new enhancement requests created on 2026-02-25.
-
-**Issue #43 Details** (ComfyUI enhancements - now obsolete):
-1. Save ComfyUI images in the same `{title}_{date}` folder with other outputs
-2. Move ComfyUI static data (JSON path, server URL) to appsettings.json
-3. Save all prompts before starting ComfyUI workflow (don't stop on video prompt failures)
-4. Save workflow JSON before sending to ComfyUI
-
-**Issue #44 Details** (Sequential image generation - now obsolete):
-- Images should be generated one at a time, waiting for each to complete before starting the next
+**✅ Recently Completed** (Ready to close):
+- #49: Add option to continue pipeline on verification failures - **COMPLETED** (UseBestAttemptOnFailure)
+- #48: Display failure summary in console - **COMPLETED** (FAILURE SUMMARY section)
+- #47: Move retry counts to appsettings - **COMPLETED** (PipelineOptions class)
+- #44: Create images one at a time - **COMPLETED** (sequential processing)
+- #43: ComfyUI image generation enhancements - **COMPLETED** (all enhancements implemented)
 
 **Issue #46 Details** (MAF - Model Context Protocol):
 - Update the application to use MAF (Model Context Protocol)
 - Requires research into MAF requirements and integration patterns
 
-**Issue #47 Details** (Configurable retry counts):
-- Move retry counts from hardcoded values to appsettings.json
-- Allow per-stage retry configuration
+### Completed Issues (This Sprint)
 
-**Issue #48 Details** (Failure summary in console):
-- Display a concise summary of pipeline failures in the console output
-- Help users quickly understand what went wrong
+| Issue | Title | Completed | Branch |
+|-------|-------|-----------|--------|
+| #49 | Enhancement: Continue pipeline on verification failures | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #48 | Enhancement: Display failure summary in console | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #47 | Enhancement: Move retry counts to appsettings | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #45 | [COMFY-002] Image Generation Agent | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #44 | Critical BUg: Create images one at a time | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #43 | Enhancement: ComfyUI image generation enhancements | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #42 | feat: Add ComfyUI client integration | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
 
-**Issue #49 Details** (Continue on verification failure):
-- Add option to continue pipeline even when verification fails
-- Allow users to get output for review despite validation issues
+**Issue #43 Completion** (All enhancements implemented):
+1. ✅ Save ComfyUI images in the same `{title}_{date}` folder with other outputs
+2. ✅ Move ComfyUI static data (JSON path, server URL) to appsettings.json
+3. ✅ Save all prompts before starting ComfyUI workflow (don't stop on video prompt failures)
+4. ✅ Save workflow JSON before sending to ComfyUI (via WorkflowTemplateProvider)
+
+**Issue #44 Completion** (Sequential image generation):
+- ✅ Images are generated one at a time, awaiting each completion before starting the next
+
+**Issue #47 Completion** (Configurable retry counts):
+- ✅ `PipelineOptions` class with `MaxRetriesPerStage` and `MaxRetriesPerAgent`
+- ✅ Per-agent configuration via dictionaries
+- ✅ Integration with `PipelineOrchestrator.ExecuteStageAsync`
+
+**Issue #48 Completion** (Failure summary in console):
+- ✅ Failure summary displayed with "FAILURE SUMMARY" header
+- ✅ Errors listed with ❌ icons
+- ✅ Points to detailed error log location
+
+**Issue #49 Completion** (Continue on verification failure):
+- ✅ `UseBestAttemptOnFailure` global setting
+- ✅ `UseBestAttemptOnFailurePerAgent` for per-stage control
+- ✅ Selects best attempt (fewest errors) when all retries fail
 
 ### Closed Issues
 

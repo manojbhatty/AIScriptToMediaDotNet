@@ -6,6 +6,50 @@ Multi-agent AI script-to-media transformation system.
 
 ---
 
+## Summary
+
+**Last Updated**: 2026-02-25
+
+**Current Status**: Core pipeline complete (scenes → photo prompts → video prompts → export → optional image generation). ComfyUI image generation feature implemented with workflow template provider, sequential processing, and configurable pipeline options.
+
+**Completed Epics**:
+- ✅ Core Infrastructure (CORE-001 through CORE-005)
+- ✅ Scene Processing (SCENE-001, SCENE-002)
+- ✅ Photo Prompt Pipeline (PHOTO-001, PHOTO-002)
+- ✅ Video Prompt Pipeline (VIDEO-001, VIDEO-002)
+- ✅ Export & Output (EXPORT-001, EXPORT-002)
+- ✅ Extensibility Foundation (EXT-006, EXT-007)
+- ✅ ComfyUI Integration (COMFY-001, COMFY-002)
+
+**In Progress**:
+- 🔄 TECH-001: Technical Debt Cleanup - Code cleanup and documentation updates
+
+**Open GitHub Issues**: 6
+- #49: Enhancement: Add an option to continue the pipeline even if verifications fail (2026-02-25) - ✅ **COMPLETED**
+- #48: Enhancement: Display a summary of why the pipeline failed at the end in console (2026-02-25) - ✅ **COMPLETED**
+- #47: Enhancement: Move retry counts to appsettings (2026-02-25) - ✅ **COMPLETED**
+- #46: Epic: Update the app to use MAF (2026-02-25) - *Not Started*
+- #44: Critical BUg: Create images one at a time (2026-02-24) - ✅ **COMPLETED** (sequential processing implemented)
+- #43: Enhancement: ComfyUI image generation enhancements (2026-02-24) - ✅ **COMPLETED**
+
+**Recently Completed** (2026-02-25):
+- ✅ Workflow template provider with file-based and in-memory implementations
+- ✅ WorkflowNodeMapping for flexible ComfyUI node configuration
+- ✅ PipelineOptions class for centralized configuration
+- ✅ Per-agent retry counts and best-attempt-on-failure settings
+- ✅ Failure summary display in console output
+- ✅ Enhanced verifier feedback for retry attempts
+- ✅ Custom retry logic per stage in PipelineOrchestrator
+
+**Future Considerations**:
+- Cloud AI providers (OpenAI, Anthropic)
+- Character consistency tracking
+- Visual style guide configuration
+- Human-in-the-loop approval workflow
+- MAF (Model Context Protocol) integration
+
+---
+
 ## Epic Breakdown
 
 ```mermaid
@@ -17,28 +61,27 @@ flowchart TB
         CORE4[CORE-004<br/>Context Object]
         CORE5[CORE-005<br/>Orchestrator]
     end
-    
+
     subgraph Scene["🎬 Scene Processing"]
         SCENE1[SCENE-001<br/>Parser Agent]
         SCENE2[SCENE-002<br/>Verifier Agent]
     end
-    
+
     subgraph Photo["📸 Photo Prompts"]
         PHOTO1[PHOTO-001<br/>Creator Agent]
         PHOTO2[PHOTO-002<br/>Verifier Agent]
     end
-    
+
     subgraph Video["🎥 Video Prompts"]
         VIDEO1[VIDEO-001<br/>Creator Agent]
         VIDEO2[VIDEO-002<br/>Verifier Agent]
     end
-    
+
     subgraph Export["📤 Export & Output"]
         EXPORT1[EXPORT-001<br/>Markdown Exporter]
-        COMFY1[COMFY-001<br/>ComfyUI Client]
-        COMFY2[COMFY-002<br/>Image Generator]
+        EXPORT2[EXPORT-002<br/>Agent Logger]
     end
-    
+
     subgraph Ext["🔌 Extensibility"]
         EXT1[EXT-001<br/>OpenAI Provider]
         EXT2[EXT-002<br/>Anthropic Provider]
@@ -46,7 +89,7 @@ flowchart TB
         EXT4[EXT-004<br/>Style Guide]
         EXT5[EXT-005<br/>Human Approval]
     end
-    
+
     Core --> Scene
     Scene --> Photo
     Photo --> Video
@@ -62,9 +105,8 @@ flowchart TB
 2. **Scene Processing** - Script parsing and validation
 3. **Photo Prompt Pipeline** - Image prompt generation and validation
 4. **Video Prompt Pipeline** - Video prompt generation and validation
-5. **Media Generation** - ComfyUI integration
-6. **Export & Output** - Markdown generation, file management
-7. **Extensibility** - Cloud providers, advanced features
+5. **Export & Output** - Markdown generation, file management, logging
+6. **Extensibility** - Cloud providers, advanced features
 
 ---
 
@@ -327,7 +369,7 @@ flowchart TB
 ### [EXPORT-002] Agent Execution Logger
 **Priority**: P0
 **Status**: ✅ Done
-**GitHub**: [#24](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/24)
+**GitHub**: [#24](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/24), [#34](https://github.com/bhattyma/AIScriptToMediaDotNet/issues/34)
 **Completed**: 2026-02-23
 **Branch**: `feature/EXT-006-verify-logging`
 
@@ -351,36 +393,53 @@ flowchart TB
 ---
 
 ### [COMFY-001] ComfyUI Client
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#42](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/42)
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
-**As a** media generator  
-**I want** a ComfyUI API client  
+**As a** media generator
+**I want** a ComfyUI API client
 **So that** I can generate images from prompts
 
 **Acceptance Criteria**:
-- [ ] Connects to local ComfyUI instance
-- [ ] Submits prompts for generation
-- [ ] Tracks generation progress
-- [ ] Downloads generated images
-- [ ] Handles errors and timeouts
+- [x] Connects to local ComfyUI instance
+- [x] Submits prompts for generation
+- [x] Tracks generation progress
+- [x] Downloads generated images
+- [x] Handles errors and timeouts
+- [x] Configurable via appsettings.json
+- [x] Workflow template provider with file-based and in-memory implementations
+- [x] WorkflowNodeMapping for flexible node configuration
+
+**Notes**: Fully implemented with sequential image processing and configurable workflow templates.
 
 ---
 
 ### [COMFY-002] Image Generation Agent
-**Priority**: P0  
-**Status**: Todo
+**Priority**: P0
+**Status**: ✅ Done
+**GitHub**: [#45](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/45)
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
 
-**As a** production system  
-**I want** an agent that manages ComfyUI image generation  
+**As a** production system
+**I want** an agent that manages ComfyUI image generation
 **So that** all photo prompts become actual images
 
 **Acceptance Criteria**:
-- [ ] Receives finalized photo prompts
-- [ ] Queues images for generation
-- [ ] Monitors generation status
-- [ ] Saves images to output directory
-- [ ] Reports failures/successes
+- [x] Receives finalized photo prompts
+- [x] Queues images for generation
+- [x] Monitors generation status
+- [x] Saves images to output directory
+- [x] Reports failures/successes
+- [x] Uses ComfyUIWorkflowBuilder for dynamic prompt generation
+- [x] Handles generation errors gracefully
+- [x] **Images generated one at a time** (sequential processing)
+- [x] **Saves images in output folder** with other artifacts
+
+**Notes**: Fully implemented with sequential processing (addresses issue #44) and all enhancements from issue #43.
 
 ---
 
@@ -522,9 +581,133 @@ flowchart TB
 
 ---
 
+### [MAF-001] Update App to Use MAF (Model Context Protocol)
+**Priority**: P1
+**Status**: Open
+**GitHub**: [#46](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/46)
+**Created**: 2026-02-25
+
+**As a** system architect
+**I want** to update the app to use MAF (Model Context Protocol)
+**So that** the system follows modern AI integration patterns
+
+**Acceptance Criteria**:
+- [ ] Research MAF/Model Context Protocol requirements
+- [ ] Update agent interfaces to support MAF
+- [ ] Update context sharing mechanism
+- [ ] Update orchestrator to work with MAF
+- [ ] Test all agents with new protocol
+- [ ] Update documentation
+
+---
+
+### [CONFIG-001] Move Retry Counts to appsettings
+**Priority**: P2
+**Status**: ✅ Done
+**GitHub**: [#47](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/47)
+**Created**: 2026-02-25
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
+
+**As a** system administrator
+**I want** retry counts to be configurable in appsettings.json
+**So that** I can tune retry behavior without code changes
+
+**Acceptance Criteria**:
+- [x] Add `RetryCount` configuration to appsettings.json via `Pipeline:MaxRetriesPerStage`
+- [x] Add `MaxRetries` per stage configuration option via `Pipeline:MaxRetriesPerAgent`
+- [x] Update orchestrator to read retry counts from configuration
+- [x] Add configuration validation
+- [x] Update documentation
+
+**Implementation**:
+- `PipelineOptions` class provides centralized configuration
+- Per-agent overrides via `MaxRetriesPerAgent` dictionary
+- Best-attempt-on-failure option via `UseBestAttemptOnFailure`
+
+---
+
+### [UX-001] Display Failure Summary in Console
+**Priority**: P2
+**Status**: ✅ Done
+**GitHub**: [#48](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/48)
+**Created**: 2026-02-25
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
+
+**As a** user
+**I want** to see a summary of why the pipeline failed in the console
+**So that** I can quickly understand what went wrong without digging into logs
+
+**Acceptance Criteria**:
+- [x] Capture failure reason at each pipeline stage
+- [x] Display concise failure summary at the end of execution
+- [x] Include stage name, error message, and retry count
+- [x] Format output for readability (colors, indentation)
+- [x] Point to detailed log files for more information
+
+**Implementation**:
+- Failure summary displayed in console with "FAILURE SUMMARY" header
+- Errors listed with ❌ icons for visibility
+- Points to detailed error log file location
+
+---
+
+### [UX-002] Continue Pipeline on Verification Failures
+**Priority**: P2
+**Status**: ✅ Done
+**GitHub**: [#49](https://github.com/manojbhatty/AIScriptToMediaDotNet/issues/49)
+**Created**: 2026-02-25
+**Completed**: 2026-02-25
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
+
+**As a** user
+**I want** an option to continue the pipeline even if verifications fail
+**So that** I can still get output for review even with validation issues
+
+**Acceptance Criteria**:
+- [x] Add `ContinueOnVerificationFailure` configuration option (implemented as `UseBestAttemptOnFailure`)
+- [x] Update orchestrator to respect the setting
+- [x] Log warnings when continuing despite failures
+- [x] Mark output files with validation warnings
+- [x] Include validation errors in export for review
+
+**Implementation**:
+- `UseBestAttemptOnFailure` global setting in `PipelineOptions`
+- `UseBestAttemptOnFailurePerAgent` for per-stage control
+- Selects best attempt (fewest errors) when all retries fail
+- Warnings logged when using best-attempt fallback
+
+---
+
+### [TECH-001] Technical Debt Cleanup
+**Priority**: P1
+**Status**: In Progress
+**Branch**: `dev/Enhancement--ComfyUI-image-generation-enhancements`
+
+**As a** developer
+**I want** to clean up technical debt and update documentation
+**So that** the codebase remains clean and maintainable
+
+**Acceptance Criteria**:
+- [x] Implement ComfyUI workflow template provider
+- [x] Add workflow node mapping configuration
+- [x] Create PipelineOptions class for centralized configuration
+- [x] Implement per-agent retry configuration
+- [x] Add failure summary display in console
+- [x] Enhance verifier feedback for retries
+- [x] Update backlog with completion status
+- [ ] Update README with ComfyUI feature documentation
+- [ ] Update running-book.md with ComfyUI usage guide
+- [ ] Clean up any unused code or comments
+- [ ] Verify all tests pass
+- [ ] **Close GitHub issues #43, #44, #47, #48, #49** as completed
+
+---
+
 ## Current Sprint / Focus
 
-**Active**: EXT-007 (Move Prompts to Separate Files - Implementation Complete)
+**Active**: ComfyUI Image Generation Implementation
 
 **Completed**:
 - CORE-002: AI Provider Abstraction ✅
@@ -541,10 +724,116 @@ flowchart TB
 - EXPORT-002: Agent Execution Logger ✅
 - EXT-006: Verify Logging ✅
 - EXT-007: Move Prompts to Separate Files ✅
+- COMFY-001: ComfyUI Client ✅
+- COMFY-002: Image Generation Agent ✅
+- CONFIG-001: Move Retry Counts to appsettings ✅
+- UX-001: Display Failure Summary in Console ✅
+- UX-002: Continue Pipeline on Verification Failures ✅
 
 **Next Up**:
-- COMFY-001: ComfyUI Client (P0)
-- COMFY-002: Image Generation Agent (P0)
+- TECH-001: Complete documentation updates and cleanup
+- MAF-001: Research and implement Model Context Protocol
+- EXT-001/EXT-002: Additional AI provider support (OpenAI, Anthropic)
+- EXT-003: Character Consistency Tracker
+- EXT-004: Style Guide Configuration
+
+---
+
+## Recent GitHub Issues
+
+### Open Issues
+
+| Issue | Title | Status | Labels | Created |
+|-------|-------|--------|--------|---------|
+| #46 | Epic: Update the app to use MAF | **OPEN** | - | 2026-02-25 |
+
+**✅ Recently Completed** (Ready to close):
+- #49: Add option to continue pipeline on verification failures - **COMPLETED** (UseBestAttemptOnFailure)
+- #48: Display failure summary in console - **COMPLETED** (FAILURE SUMMARY section)
+- #47: Move retry counts to appsettings - **COMPLETED** (PipelineOptions class)
+- #44: Create images one at a time - **COMPLETED** (sequential processing)
+- #43: ComfyUI image generation enhancements - **COMPLETED** (all enhancements implemented)
+
+**Issue #46 Details** (MAF - Model Context Protocol):
+- Update the application to use MAF (Model Context Protocol)
+- Requires research into MAF requirements and integration patterns
+
+### Completed Issues (This Sprint)
+
+| Issue | Title | Completed | Branch |
+|-------|-------|-----------|--------|
+| #49 | Enhancement: Continue pipeline on verification failures | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #48 | Enhancement: Display failure summary in console | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #47 | Enhancement: Move retry counts to appsettings | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #45 | [COMFY-002] Image Generation Agent | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #44 | Critical BUg: Create images one at a time | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #43 | Enhancement: ComfyUI image generation enhancements | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+| #42 | feat: Add ComfyUI client integration | 2026-02-25 | `dev/Enhancement--ComfyUI-image-generation-enhancements` |
+
+**Issue #43 Completion** (All enhancements implemented):
+1. ✅ Save ComfyUI images in the same `{title}_{date}` folder with other outputs
+2. ✅ Move ComfyUI static data (JSON path, server URL) to appsettings.json
+3. ✅ Save all prompts before starting ComfyUI workflow (don't stop on video prompt failures)
+4. ✅ Save workflow JSON before sending to ComfyUI (via WorkflowTemplateProvider)
+
+**Issue #44 Completion** (Sequential image generation):
+- ✅ Images are generated one at a time, awaiting each completion before starting the next
+
+**Issue #47 Completion** (Configurable retry counts):
+- ✅ `PipelineOptions` class with `MaxRetriesPerStage` and `MaxRetriesPerAgent`
+- ✅ Per-agent configuration via dictionaries
+- ✅ Integration with `PipelineOrchestrator.ExecuteStageAsync`
+
+**Issue #48 Completion** (Failure summary in console):
+- ✅ Failure summary displayed with "FAILURE SUMMARY" header
+- ✅ Errors listed with ❌ icons
+- ✅ Points to detailed error log location
+
+**Issue #49 Completion** (Continue on verification failure):
+- ✅ `UseBestAttemptOnFailure` global setting
+- ✅ `UseBestAttemptOnFailurePerAgent` for per-stage control
+- ✅ Selects best attempt (fewest errors) when all retries fail
+
+### Closed Issues
+
+| Issue | Title | Status | Labels | Closed |
+|-------|-------|--------|--------|--------|
+| #45 | [COMFY-002] Image Generation Agent | Closed | P0, epic/comfyui | 2026-02-24 |
+| #42 | feat: Add ComfyUI client integration | Closed | feature | 2026-02-24 |
+| #41 | feat: Move prompts to separate files | Closed | enhancement | 2026-02-24 |
+| #40 | feat: Enforce script excerpts in all prompts | Closed | enhancement | 2026-02-24 |
+| #39 | feat: Video prompt creator and verifier agents | Closed | feature | 2026-02-24 |
+| #38 | feat: Photo prompt creator and verifier agents | Closed | feature | 2026-02-24 |
+| #37 | Move prompts from appsettings.json to separate files | Closed | enhancement | 2026-02-23 |
+| #34 | Add detailed execution logging | Closed | logging | 2026-02-23 |
+| #26 | [COMFY-002] Image Generation Agent | Closed | P0, epic/comfyui | 2026-02-24 |
+| #25 | [COMFY-001] ComfyUI Client | Closed | P0, epic/comfyui | 2026-02-23 |
+| #24 | [EXPORT-002] Agent Execution Logger | Closed | P0, epic/export | 2026-02-23 |
+| #23 | [EXPORT-001] Markdown Exporter | Closed | P0, epic/export | 2026-02-23 |
+| #22 | [VIDEO-002] Video Prompt Verifier Agent | Closed | P0, epic/video | 2026-02-23 |
+| #21 | [VIDEO-001] Video Prompt Creator Agent | Closed | P0, epic/video | 2026-02-23 |
+| #20 | [PHOTO-002] Photo Prompt Verifier Agent | Closed | P0, epic/photo | 2026-02-23 |
+| #19 | [PHOTO-001] Photo Prompt Creator Agent | Closed | P0, epic/photo | 2026-02-23 |
+| #18 | [SCENE-002] Scene Verifier Agent | Closed | P0, epic/scene | 2026-02-23 |
+| #17 | [SCENE-001] Scene Parser Agent | Closed | P0, epic/scene | 2026-02-23 |
+| #16 | [CORE-005] Orchestrator Implementation | Closed | P0, epic/core | 2026-02-23 |
+| #15 | [CORE-004] Shared Context Object | Closed | P0, epic/core | 2026-02-23 |
+| #14 | [CORE-003] Agent Abstraction | Closed | P0, epic/core | 2026-02-23 |
+| #13 | [CORE-002] AI Provider Abstraction | Closed | P0, epic/core | 2026-02-23 |
+| #12 | [EXPORT-002] Agent Execution Logger | Closed | P0, epic/export | 2026-02-23 |
+| #11 | [EXPORT-001] Markdown Exporter | Closed | P0, epic/export | 2026-02-23 |
+| #10 | [VIDEO-002] Video Prompt Verifier Agent | Closed | P0, epic/video | 2026-02-23 |
+| #9 | [VIDEO-001] Video Prompt Creator Agent | Closed | P0, epic/video | 2026-02-23 |
+| #8 | [PHOTO-002] Photo Prompt Verifier Agent | Closed | P0, epic/photo | 2026-02-23 |
+| #7 | [PHOTO-001] Photo Prompt Creator Agent | Closed | P0, epic/photo | 2026-02-23 |
+| #6 | [SCENE-002] Scene Verifier Agent | Closed | P0, epic/scene | 2026-02-23 |
+| #5 | [SCENE-001] Scene Parser Agent | Closed | P0, epic/scene | 2026-02-23 |
+| #4 | [CORE-005] Orchestrator Implementation | Closed | P0, epic/core | 2026-02-23 |
+| #3 | [CORE-004] Shared Context Object | Closed | P0, epic/core | 2026-02-23 |
+| #2 | [CORE-003] Agent Abstraction | Closed | P0, epic/core | 2026-02-22 |
+| #1 | [CORE-002] AI Provider Abstraction | Closed | P0, epic/core | 2026-02-22 |
+
+**Note**: GitHub repository is private at `https://github.com/manojbhatty/AIScriptToMediaDotNet`
 
 ---
 

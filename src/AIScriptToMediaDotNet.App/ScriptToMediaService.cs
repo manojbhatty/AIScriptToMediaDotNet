@@ -36,19 +36,11 @@ public class ScriptToMediaService
     private readonly ImageGenerationAgent _imageGenerator;
     private readonly ILogger<ScriptToMediaService> _logger;
     private readonly PipelineExecutionContext _executionContext;
+    private readonly PipelineOptions _pipelineOptions;
 
     /// <summary>
     /// Initializes a new instance of the ScriptToMediaService class.
     /// </summary>
-    /// <param name="orchestrator">The pipeline orchestrator.</param>
-    /// <param name="sceneParser">The scene parser agent.</param>
-    /// <param name="sceneVerifier">The scene verifier agent.</param>
-    /// <param name="photoPromptCreator">The photo prompt creator agent.</param>
-    /// <param name="photoPromptVerifier">The photo prompt verifier agent.</param>
-    /// <param name="videoPromptCreator">The video prompt creator agent.</param>
-    /// <param name="videoPromptVerifier">The video prompt verifier agent.</param>
-    /// <param name="imageGenerator">The image generation agent.</param>
-    /// <param name="logger">The logger instance.</param>
     public ScriptToMediaService(
         PipelineOrchestrator orchestrator,
         SceneParserAgent sceneParser,
@@ -58,7 +50,8 @@ public class ScriptToMediaService
         VideoPromptCreatorAgent videoPromptCreator,
         VideoPromptVerifierAgent videoPromptVerifier,
         ImageGenerationAgent imageGenerator,
-        ILogger<ScriptToMediaService> logger)
+        ILogger<ScriptToMediaService> logger,
+        PipelineOptions pipelineOptions)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _sceneParser = sceneParser ?? throw new ArgumentNullException(nameof(sceneParser));
@@ -70,6 +63,7 @@ public class ScriptToMediaService
         _imageGenerator = imageGenerator ?? throw new ArgumentNullException(nameof(imageGenerator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _executionContext = new PipelineExecutionContext();
+        _pipelineOptions = pipelineOptions ?? throw new ArgumentNullException(nameof(pipelineOptions));
     }
 
     /// <summary>
@@ -105,14 +99,14 @@ public class ScriptToMediaService
             : script;
         _executionContext.ConfigurationSnapshot["Ollama.Endpoint"] = "http://localhost:11434";
         _executionContext.ConfigurationSnapshot["Ollama.DefaultModel"] = "qwen2.5-coder:latest";
-        _executionContext.ConfigurationSnapshot["MaxRetries"] = "3";
+        _executionContext.ConfigurationSnapshot["MaxRetries"] = _pipelineOptions.MaxRetriesPerStage.ToString();
 
         // Initialize context
         var context = new ScriptToMediaContext
         {
             Title = title,
             OriginalScript = script,
-            MaxRetriesPerStage = 3,
+            MaxRetriesPerStage = _pipelineOptions.MaxRetriesPerStage,
             OutputPath = outputFolder,  // Use the timestamped folder
             GenerateImages = generateImages
         };
@@ -121,15 +115,25 @@ public class ScriptToMediaService
         {
             // Log pipeline start
             _executionContext.LogAgentStart("Pipeline", "Initialization", $"Title: {title}, Script Length: {script.Length}");
+            
+            // Log configuration
+            _logger.LogInformation("Pipeline Options: MaxRetries={MaxRetries}, UseBestAttempt={UseBest}", 
+                _pipelineOptions.MaxRetriesPerStage, _pipelineOptions.UseBestAttemptOnFailure);
 
             // Stage 1: Scene Parsing
             _logger.LogInformation("Stage 1: Parsing scenes...");
+            var maxRetriesSceneParsing = _pipelineOptions.GetMaxRetriesForAgent("SceneParsing");
+            var useBestAttemptSceneParsing = _pipelineOptions.ShouldUseBestAttemptOnFailure("SceneParsing");
+            _logger.LogInformation("SceneParsing: MaxRetries={MaxRetries}, UseBestAttempt={UseBest}", 
+                maxRetriesSceneParsing, useBestAttemptSceneParsing);
             var parsed = await _orchestrator.ExecuteStageAsync<SceneParserInput, List<SceneModel>>(
                 context,
                 "SceneParsing",
                 _sceneParser,
                 ctx => new SceneParserInput { Script = ctx.OriginalScript },
                 (ctx, scenes) => ctx.Scenes = scenes,
+                maxRetriesSceneParsing,
+                useBestAttemptSceneParsing,
                 cancellationToken,
                 _executionContext);
 
@@ -137,12 +141,13 @@ public class ScriptToMediaService
             {
                 _logger.LogError("Scene parsing failed after all retries");
                 _executionContext.Fail("Scene parsing failed after all retries");
-                
+                CollectErrors(context);
+
                 // Export error log even on failure
                 var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
                 ExportErrorLog(_executionContext, errorLogPath);
                 _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
-                
+
                 return context;
             }
 
@@ -150,12 +155,18 @@ public class ScriptToMediaService
 
             // Stage 2: Scene Verification
             _logger.LogInformation("Stage 2: Verifying scenes...");
+            var maxRetriesSceneVerification = _pipelineOptions.GetMaxRetriesForAgent("SceneVerification");
+            var useBestAttemptSceneVerification = _pipelineOptions.ShouldUseBestAttemptOnFailure("SceneVerification");
+            _logger.LogInformation("SceneVerification: MaxRetries={MaxRetries}, UseBestAttempt={UseBest}", 
+                maxRetriesSceneVerification, useBestAttemptSceneVerification);
             var verified = await _orchestrator.ExecuteStageAsync<SceneVerificationInput, ValidationResult>(
                 context,
                 "SceneVerification",
                 _sceneVerifier,
                 ctx => new SceneVerificationInput { OriginalScript = ctx.OriginalScript, Scenes = ctx.Scenes },
                 (ctx, validationResult) => { /* Validation result stored in context if needed */ },
+                maxRetriesSceneVerification,
+                useBestAttemptSceneVerification,
                 cancellationToken,
                 _executionContext);
 
@@ -163,28 +174,33 @@ public class ScriptToMediaService
             {
                 _logger.LogError("Scene verification failed after all retries");
                 _executionContext.Fail("Scene verification failed after all retries");
-                
+                CollectErrors(context);
+
                 // Export error log even on failure
                 var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
                 ExportErrorLog(_executionContext, errorLogPath);
                 _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
-                
+
                 return context;
             }
 
             _logger.LogInformation("Scenes verified successfully");
-            _executionContext.LogAgentComplete("SceneVerifier", "SceneVerification", 
-                $"{context.Scenes.Count} scenes verified", 
+            _executionContext.LogAgentComplete("SceneVerifier", "SceneVerification",
+                $"{context.Scenes.Count} scenes verified",
                 PipelineExecutionContext.SerializeToJson(context.Scenes), 0);
 
             // Stage 3: Photo Prompt Creation
             _logger.LogInformation("Stage 3: Creating photo prompts...");
+            var maxRetriesPhotoPromptCreation = _pipelineOptions.GetMaxRetriesForAgent("PhotoPromptCreation");
+            var useBestAttemptPhotoPromptCreation = _pipelineOptions.ShouldUseBestAttemptOnFailure("PhotoPromptCreation");
             var photoPromptsCreated = await _orchestrator.ExecuteStageAsync<PhotoPromptCreatorInput, List<PhotoPrompt>>(
                 context,
                 "PhotoPromptCreation",
                 _photoPromptCreator,
                 ctx => new PhotoPromptCreatorInput { Scenes = ctx.Scenes },
                 (ctx, photoPrompts) => ctx.PhotoPrompts = photoPrompts,
+                maxRetriesPhotoPromptCreation,
+                useBestAttemptPhotoPromptCreation,
                 cancellationToken,
                 _executionContext);
 
@@ -192,12 +208,13 @@ public class ScriptToMediaService
             {
                 _logger.LogError("Photo prompt creation failed after all retries");
                 _executionContext.Fail("Photo prompt creation failed after all retries");
-                
+                CollectErrors(context);
+
                 // Export error log even on failure
                 var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
                 ExportErrorLog(_executionContext, errorLogPath);
                 _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
-                
+
                 return context;
             }
 
@@ -205,12 +222,16 @@ public class ScriptToMediaService
 
             // Stage 4: Photo Prompt Verification
             _logger.LogInformation("Stage 4: Verifying photo prompts...");
+            var maxRetriesPhotoPromptVerification = _pipelineOptions.GetMaxRetriesForAgent("PhotoPromptVerification");
+            var useBestAttemptPhotoPromptVerification = _pipelineOptions.ShouldUseBestAttemptOnFailure("PhotoPromptVerification");
             var photoPromptsVerified = await _orchestrator.ExecuteStageAsync<PhotoPromptVerificationInput, ValidationResult>(
                 context,
                 "PhotoPromptVerification",
                 _photoPromptVerifier,
                 ctx => new PhotoPromptVerificationInput { Scenes = ctx.Scenes, PhotoPrompts = ctx.PhotoPrompts },
                 (ctx, validationResult) => { /* Validation result stored if needed */ },
+                maxRetriesPhotoPromptVerification,
+                useBestAttemptPhotoPromptVerification,
                 cancellationToken,
                 _executionContext);
 
@@ -218,12 +239,13 @@ public class ScriptToMediaService
             {
                 _logger.LogError("Photo prompt verification failed after all retries");
                 _executionContext.Fail("Photo prompt verification failed after all retries");
-                
+                CollectErrors(context);
+
                 // Export error log even on failure
                 var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
                 ExportErrorLog(_executionContext, errorLogPath);
                 _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
-                
+
                 return context;
             }
 
@@ -231,12 +253,16 @@ public class ScriptToMediaService
 
             // Stage 5: Video Prompt Creation
             _logger.LogInformation("Stage 5: Creating video prompts...");
+            var maxRetriesVideoPromptCreation = _pipelineOptions.GetMaxRetriesForAgent("VideoPromptCreation");
+            var useBestAttemptVideoPromptCreation = _pipelineOptions.ShouldUseBestAttemptOnFailure("VideoPromptCreation");
             var videoPromptsCreated = await _orchestrator.ExecuteStageAsync<VideoPromptCreatorInput, List<VideoPrompt>>(
                 context,
                 "VideoPromptCreation",
                 _videoPromptCreator,
                 ctx => new VideoPromptCreatorInput { Scenes = ctx.Scenes },
                 (ctx, videoPrompts) => ctx.VideoPrompts = videoPrompts,
+                maxRetriesVideoPromptCreation,
+                useBestAttemptVideoPromptCreation,
                 cancellationToken,
                 _executionContext);
 
@@ -244,12 +270,13 @@ public class ScriptToMediaService
             {
                 _logger.LogError("Video prompt creation failed after all retries");
                 _executionContext.Fail("Video prompt creation failed after all retries");
-                
+                CollectErrors(context);
+
                 // Export error log even on failure
                 var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
                 ExportErrorLog(_executionContext, errorLogPath);
                 _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
-                
+
                 return context;
             }
 
@@ -257,12 +284,16 @@ public class ScriptToMediaService
 
             // Stage 6: Video Prompt Verification
             _logger.LogInformation("Stage 6: Verifying video prompts...");
+            var maxRetriesVideoPromptVerification = _pipelineOptions.GetMaxRetriesForAgent("VideoPromptVerification");
+            var useBestAttemptVideoPromptVerification = _pipelineOptions.ShouldUseBestAttemptOnFailure("VideoPromptVerification");
             var videoPromptsVerified = await _orchestrator.ExecuteStageAsync<VideoPromptVerificationInput, ValidationResult>(
                 context,
                 "VideoPromptVerification",
                 _videoPromptVerifier,
                 ctx => new VideoPromptVerificationInput { Scenes = ctx.Scenes, VideoPrompts = ctx.VideoPrompts },
                 (ctx, validationResult) => { /* Validation result stored if needed */ },
+                maxRetriesVideoPromptVerification,
+                useBestAttemptVideoPromptVerification,
                 cancellationToken,
                 _executionContext);
 
@@ -270,12 +301,13 @@ public class ScriptToMediaService
             {
                 _logger.LogError("Video prompt verification failed after all retries");
                 _executionContext.Fail("Video prompt verification failed after all retries");
-                
+                CollectErrors(context);
+
                 // Export error log even on failure
                 var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
                 ExportErrorLog(_executionContext, errorLogPath);
                 _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
-                
+
                 return context;
             }
 
@@ -285,6 +317,8 @@ public class ScriptToMediaService
             if (context.GenerateImages && context.PhotoPrompts.Any())
             {
                 _logger.LogInformation("Stage 7: Generating images from photo prompts...");
+                var maxRetriesImageGeneration = _pipelineOptions.GetMaxRetriesForAgent("ImageGeneration");
+                var useBestAttemptImageGeneration = _pipelineOptions.ShouldUseBestAttemptOnFailure("ImageGeneration");
                 var imagesGenerated = await _orchestrator.ExecuteStageAsync<ImageGenerationInput, ImageGenerationResult>(
                     context,
                     "ImageGeneration",
@@ -292,12 +326,14 @@ public class ScriptToMediaService
                     ctx => new ImageGenerationInput
                     {
                         PhotoPrompts = ctx.PhotoPrompts,
-                        OutputPath = outputPath ?? "./output"
+                        OutputPath = outputFolder
                     },
                     (ctx, result) =>
                     {
                         ctx.GeneratedImages = result.Images;
                     },
+                    maxRetriesImageGeneration,
+                    useBestAttemptImageGeneration,
                     cancellationToken,
                     _executionContext);
 
@@ -365,12 +401,17 @@ public class ScriptToMediaService
         {
             _logger.LogError(ex, "Pipeline failed with error");
             _executionContext.Fail(ex.Message, ex.StackTrace);
+            CollectErrors(context);
             
+            // Also add the exception message to errors
+            if (!context.Errors.Contains(ex.Message))
+                context.Errors.Add(ex.Message);
+
             // Export error log on exception
             var errorLogPath = Path.Combine(outputPath, $"error-{_executionContext.ExecutionId}.md");
             ExportErrorLog(_executionContext, errorLogPath);
             _logger.LogInformation("Error log exported to: {ErrorLogPath}", errorLogPath);
-            
+
             throw;
         }
     }
@@ -493,5 +534,18 @@ public class ScriptToMediaService
     {
         var invalidChars = Path.GetInvalidFileNameChars();
         return string.Join("_", name.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries)).Trim();
+    }
+    
+    /// <summary>
+    /// Collects errors from execution context and adds them to the context.
+    /// </summary>
+    private void CollectErrors(ScriptToMediaContext context)
+    {
+        foreach (var error in _executionContext.LogEntries.Where(e => e.Event == "Error"))
+        {
+            var errorMsg = $"{error.Agent} - {error.Stage}: {error.Message}";
+            if (!context.Errors.Contains(errorMsg))
+                context.Errors.Add(errorMsg);
+        }
     }
 }

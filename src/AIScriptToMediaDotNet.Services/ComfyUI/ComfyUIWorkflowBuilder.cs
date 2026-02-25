@@ -7,38 +7,29 @@ namespace AIScriptToMediaDotNet.Services.ComfyUI;
 
 /// <summary>
 /// Builds ComfyUI workflow JSON from photo prompts.
+/// Works with any ComfyUI workflow JSON by discovering nodes dynamically.
 /// </summary>
 public class ComfyUIWorkflowBuilder
 {
     private readonly ILogger<ComfyUIWorkflowBuilder> _logger;
-    private readonly JsonNode _baseWorkflow;
-    private readonly string _workflowPath;
+    private readonly IWorkflowTemplateProvider _templateProvider;
+    private readonly WorkflowNodeMapping _nodeMapping;
 
     /// <summary>
     /// Initializes a new instance of the ComfyUIWorkflowBuilder class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
-    /// <param name="workflowPath">Path to the base workflow JSON file.</param>
+    /// <param name="templateProvider">The workflow template provider.</param>
+    /// <param name="nodeMapping">Optional node mapping configuration. If null, auto-discovery will be used.</param>
     public ComfyUIWorkflowBuilder(
         ILogger<ComfyUIWorkflowBuilder> logger,
-        string workflowPath = "ComfyUiWorkflows/ComfyUI_SDXL_Image_Generation.json")
+        IWorkflowTemplateProvider templateProvider,
+        WorkflowNodeMapping? nodeMapping = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _workflowPath = workflowPath;
-
-        // Load the base workflow
-        if (File.Exists(workflowPath))
-        {
-            var workflowJson = File.ReadAllText(workflowPath);
-            _baseWorkflow = JsonNode.Parse(workflowJson) 
-                ?? throw new InvalidOperationException($"Failed to parse workflow JSON from {workflowPath}");
-            _logger.LogDebug("Loaded base workflow from {WorkflowPath}", workflowPath);
-        }
-        else
-        {
-            _logger.LogWarning("Base workflow not found at {WorkflowPath}, using default", workflowPath);
-            _baseWorkflow = CreateDefaultWorkflow();
-        }
+        _templateProvider = templateProvider ?? throw new ArgumentNullException(nameof(templateProvider));
+        _nodeMapping = nodeMapping ?? new WorkflowNodeMapping();
+        _logger.LogDebug("Initialized with workflow: {WorkflowName}", templateProvider.GetWorkflowName());
     }
 
     /// <summary>
@@ -48,82 +39,148 @@ public class ComfyUIWorkflowBuilder
     /// <param name="seed">Random seed for generation (optional).</param>
     /// <param name="outputPath">Optional output path to save the workflow JSON for debugging.</param>
     /// <returns>The ComfyUI prompt object.</returns>
-    public ComfyuiPrompt BuildPrompt(PhotoPrompt photoPrompt, int? seed = null, string? outputPath = null)
+    public async Task<ComfyuiPrompt> BuildPromptAsync(PhotoPrompt photoPrompt, int? seed = null, string? outputPath = null, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Building ComfyUI prompt for {PromptId}", photoPrompt.Id);
 
-        // Clone the base workflow
-        var workflow = _baseWorkflow.DeepClone();
+        // Load and clone the base workflow
+        var template = await _templateProvider.GetWorkflowTemplateAsync(cancellationToken);
+        var workflow = template.DeepClone();
 
-        // Build the full prompt text by combining all photo prompt fields
+        // Auto-discover nodes if not configured
+        var mapping = _nodeMapping;
+        if (ShouldAutoDiscover(mapping))
+        {
+            mapping = AutoDiscoverNodes(workflow);
+            _logger.LogDebug("Auto-discovered node mapping: Positive={Positive}, Negative={Negative}, Sampler={Sampler}, SaveImage={SaveImage}",
+                mapping.PositivePromptNodeId, mapping.NegativePromptNodeId, mapping.SamplerNodeId, mapping.SaveImageNodeId);
+        }
+
+        // Build the full prompt text
         var fullPrompt = BuildFullPromptText(photoPrompt);
         _logger.LogDebug("Built full prompt text ({Length} characters)", fullPrompt.Length);
 
-        // Update the positive prompt (node 67 in the workflow)
-        if (workflow["67"] != null)
+        // Update positive prompt
+        if (!string.IsNullOrEmpty(mapping.PositivePromptNodeId) && workflow[mapping.PositivePromptNodeId] != null)
         {
-            workflow["67"]["inputs"]!["text"] = fullPrompt;
-            _logger.LogDebug("Updated node 67 (positive prompt) with {Length} characters", fullPrompt.Length);
+            var node = workflow[mapping.PositivePromptNodeId]!;
+            if (node["inputs"] != null)
+            {
+                node["inputs"]["text"] = fullPrompt;
+                _logger.LogDebug("Updated positive prompt node {NodeId} with {Length} characters",
+                    mapping.PositivePromptNodeId, fullPrompt.Length);
+            }
         }
         else
         {
-            _logger.LogWarning("Node 67 (positive prompt) not found in workflow");
+            // Try to find any CLIPTextEncode node as fallback
+            var fallbackNode = FindNodeByClassType(workflow, "CLIPTextEncode");
+            if (fallbackNode.HasValue)
+            {
+                fallbackNode.Value.node["inputs"]!["text"] = fullPrompt;
+                _logger.LogDebug("Updated fallback positive prompt node {NodeId}", fallbackNode.Value.nodeId);
+            }
+            else
+            {
+                _logger.LogWarning("No positive prompt node found in workflow");
+            }
         }
 
-        // Update negative prompt if available (node 71)
-        if (!string.IsNullOrEmpty(photoPrompt.NegativePrompt) && workflow["71"] != null)
+        // Update negative prompt
+        if (!string.IsNullOrEmpty(mapping.NegativePromptNodeId) && workflow[mapping.NegativePromptNodeId] != null)
         {
-            workflow["71"]["inputs"]!["text"] = photoPrompt.NegativePrompt;
-        }
-        else if (workflow["71"] != null)
-        {
-            // Default negative prompt
-            workflow["71"]["inputs"]!["text"] = "blurry, distorted, low quality, watermark, text, signature, bad anatomy, deformed, disfigured";
+            var node = workflow[mapping.NegativePromptNodeId]!;
+            if (node["inputs"] != null)
+            {
+                node["inputs"]["text"] = !string.IsNullOrEmpty(photoPrompt.NegativePrompt)
+                    ? photoPrompt.NegativePrompt
+                    : "blurry, distorted, low quality, watermark, text, signature, bad anatomy, deformed, disfigured";
+                _logger.LogDebug("Updated negative prompt node {NodeId}", mapping.NegativePromptNodeId);
+            }
         }
         else
         {
-            _logger.LogWarning("Node 71 (negative prompt) not found in workflow");
+            // Try to find second CLIPTextEncode node as fallback
+            var positiveNodeId = mapping.PositivePromptNodeId ?? FindNodeByClassType(workflow, "CLIPTextEncode")?.nodeId;
+            var fallbackNode = FindSecondNodeByClassType(workflow, "CLIPTextEncode", positiveNodeId);
+            if (fallbackNode.HasValue)
+            {
+                fallbackNode.Value.node["inputs"]!["text"] = "blurry, distorted, low quality, watermark, text, signature, bad anatomy, deformed, disfigured";
+                _logger.LogDebug("Updated fallback negative prompt node {NodeId}", fallbackNode.Value.nodeId);
+            }
         }
 
-        // Update seed if provided (node 69) - ensure positive value
-        if (seed.HasValue && workflow["69"] != null)
+        // Update seed in sampler node
+        var seedToUse = seed ?? Random.Shared.Next(0, int.MaxValue);
+        if (!string.IsNullOrEmpty(mapping.SamplerNodeId) && workflow[mapping.SamplerNodeId] != null)
         {
-            // Ensure seed is always positive (ComfyUI requires seed >= 0)
-            var positiveSeed = Math.Abs(seed.Value);
-            workflow["69"]["inputs"]!["seed"] = positiveSeed;
-            _logger.LogDebug("Updated node 69 (KSampler) with seed {Seed}", positiveSeed);
-        }
-        else if (workflow["69"] != null)
-        {
-            // Use a random seed if none provided
-            var randomSeed = Random.Shared.Next(0, int.MaxValue);
-            workflow["69"]["inputs"]!["seed"] = randomSeed;
-            _logger.LogDebug("Updated node 69 (KSampler) with random seed {Seed}", randomSeed);
+            var node = workflow[mapping.SamplerNodeId]!;
+            if (node["inputs"] != null)
+            {
+                // Try "seed" first, then "noise_seed" for KSamplerAdvanced
+                if (node["inputs"]["seed"] != null)
+                {
+                    node["inputs"]["seed"] = Math.Abs(seedToUse);
+                    _logger.LogDebug("Updated sampler node {NodeId} with seed {Seed}", mapping.SamplerNodeId, Math.Abs(seedToUse));
+                }
+                else if (node["inputs"]["noise_seed"] != null)
+                {
+                    node["inputs"]["noise_seed"] = Math.Abs(seedToUse);
+                    _logger.LogDebug("Updated sampler node {NodeId} with noise_seed {Seed}", mapping.SamplerNodeId, Math.Abs(seedToUse));
+                }
+            }
         }
         else
         {
-            _logger.LogWarning("Node 69 (KSampler) not found in workflow");
+            // Try to find any KSampler node as fallback
+            var fallbackNode = FindNodeByClassTypes(workflow, new[] { "KSampler", "KSamplerAdvanced" });
+            if (fallbackNode.HasValue)
+            {
+                if (fallbackNode.Value.node["inputs"]!["seed"] != null)
+                {
+                    fallbackNode.Value.node["inputs"]!["seed"] = Math.Abs(seedToUse);
+                    _logger.LogDebug("Updated fallback sampler node {NodeId} with seed {Seed}", fallbackNode.Value.nodeId, Math.Abs(seedToUse));
+                }
+                else if (fallbackNode.Value.node["inputs"]!["noise_seed"] != null)
+                {
+                    fallbackNode.Value.node["inputs"]!["noise_seed"] = Math.Abs(seedToUse);
+                    _logger.LogDebug("Updated fallback sampler node {NodeId} with noise_seed {Seed}", fallbackNode.Value.nodeId, Math.Abs(seedToUse));
+                }
+            }
         }
 
-        // Update filename prefix to include scene and prompt IDs (node 9)
-        if (workflow["9"] != null)
+        // Update filename prefix in save image node
+        if (!string.IsNullOrEmpty(mapping.SaveImageNodeId) && workflow[mapping.SaveImageNodeId] != null)
         {
-            var filenamePrefix = $"scene-{photoPrompt.SceneId}-prompt-{photoPrompt.Id}";
-            workflow["9"]["inputs"]!["filename_prefix"] = filenamePrefix;
-            _logger.LogDebug("Updated node 9 (SaveImage) with filename prefix {Prefix}", filenamePrefix);
+            var node = workflow[mapping.SaveImageNodeId]!;
+            if (node["inputs"] != null)
+            {
+                var filenamePrefix = $"scene-{photoPrompt.SceneId}-prompt-{photoPrompt.Id}";
+                node["inputs"]["filename_prefix"] = filenamePrefix;
+                _logger.LogDebug("Updated save image node {NodeId} with filename prefix {Prefix}",
+                    mapping.SaveImageNodeId, filenamePrefix);
+            }
         }
         else
         {
-            _logger.LogWarning("Node 9 (SaveImage) not found in workflow");
+            // Try to find any SaveImage node as fallback
+            var fallbackNode = FindNodeByClassTypes(workflow, new[] { "SaveImage", "PreviewImage" });
+            if (fallbackNode.HasValue)
+            {
+                var filenamePrefix = $"scene-{photoPrompt.SceneId}-prompt-{photoPrompt.Id}";
+                fallbackNode.Value.node["inputs"]!["filename_prefix"] = filenamePrefix;
+                _logger.LogDebug("Updated fallback save image node {NodeId} with filename prefix {Prefix}",
+                    fallbackNode.Value.nodeId, filenamePrefix);
+            }
         }
 
-        // Convert to dictionary for the prompt object
+        // Convert to dictionary
         var promptDict = workflow.AsObject().ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value!);
-        
-        // Log the complete workflow JSON for debugging
+
+        // Log the workflow JSON for debugging
         var workflowJson = JsonSerializer.Serialize(promptDict, new JsonSerializerOptions { WriteIndented = true });
-        _logger.LogDebug("Complete workflow JSON:\n{Json}", workflowJson);
-        
+        _logger.LogDebug("Complete workflow JSON generated");
+
         // Save the workflow JSON to the output folder if specified
         if (!string.IsNullOrEmpty(outputPath))
         {
@@ -151,121 +208,137 @@ public class ComfyUIWorkflowBuilder
     /// <summary>
     /// Builds the full prompt text by combining all photo prompt fields.
     /// </summary>
-    /// <param name="photoPrompt">The photo prompt.</param>
-    /// <returns>The combined prompt text.</returns>
     private static string BuildFullPromptText(PhotoPrompt photoPrompt)
     {
         var parts = new List<string>();
 
-        // Start with the main prompt
         if (!string.IsNullOrEmpty(photoPrompt.Prompt))
-        {
             parts.Add(photoPrompt.Prompt);
-        }
 
-        // Add subject description
         if (!string.IsNullOrEmpty(photoPrompt.Subject))
-        {
             parts.Add($"Subject: {photoPrompt.Subject}");
-        }
 
-        // Add style
         if (!string.IsNullOrEmpty(photoPrompt.Style))
-        {
             parts.Add($"Style: {photoPrompt.Style}");
-        }
 
-        // Add lighting
         if (!string.IsNullOrEmpty(photoPrompt.Lighting))
-        {
             parts.Add($"Lighting: {photoPrompt.Lighting}");
-        }
 
-        // Add composition
         if (!string.IsNullOrEmpty(photoPrompt.Composition))
-        {
             parts.Add($"Composition: {photoPrompt.Composition}");
-        }
 
-        // Add mood
         if (!string.IsNullOrEmpty(photoPrompt.Mood))
-        {
             parts.Add($"Mood: {photoPrompt.Mood}");
-        }
 
-        // Add camera details
         if (!string.IsNullOrEmpty(photoPrompt.Camera))
-        {
             parts.Add($"Camera: {photoPrompt.Camera}");
-        }
 
         return string.Join(", ", parts);
     }
 
     /// <summary>
-    /// Creates a default SDXL workflow if the file is not found.
+    /// Determines if auto-discovery should be used.
     /// </summary>
-    /// <returns>The default workflow JsonNode.</returns>
-    private static JsonNode CreateDefaultWorkflow()
+    private static bool ShouldAutoDiscover(WorkflowNodeMapping mapping)
     {
-        var workflow = new JsonObject
-        {
-            ["67"] = new JsonObject
-            {
-                ["inputs"] = new JsonObject
-                {
-                    ["text"] = "",
-                    ["clip"] = new JsonArray { "62", 0 }
-                },
-                ["class_type"] = "CLIPTextEncode"
-            },
-            ["71"] = new JsonObject
-            {
-                ["inputs"] = new JsonObject
-                {
-                    ["text"] = "blurry, distorted, low quality",
-                    ["clip"] = new JsonArray { "62", 0 }
-                },
-                ["class_type"] = "CLIPTextEncode"
-            },
-            ["69"] = new JsonObject
-            {
-                ["inputs"] = new JsonObject
-                {
-                    ["seed"] = 0,
-                    ["steps"] = 25,
-                    ["cfg"] = 4,
-                    ["sampler_name"] = "res_multistep",
-                    ["scheduler"] = "simple",
-                    ["denoise"] = 1,
-                    ["model"] = new JsonArray { "70", 0 },
-                    ["positive"] = new JsonArray { "67", 0 },
-                    ["negative"] = new JsonArray { "71", 0 },
-                    ["latent_image"] = new JsonArray { "68", 0 }
-                },
-                ["class_type"] = "KSampler"
-            },
-            ["68"] = new JsonObject
-            {
-                ["inputs"] = new JsonObject
-                {
-                    ["width"] = 1280,
-                    ["height"] = 720,
-                    ["batch_size"] = 1
-                },
-                ["class_type"] = "EmptySD3LatentImage"
-            },
-            ["9"] = new JsonObject
-            {
-                ["inputs"] = new JsonObject
-                {
-                    ["filename_prefix"] = "z-image",
-                    ["images"] = new JsonArray { "65", 0 }
-                },
-                ["class_type"] = "SaveImage"
-            }
-        };
+        return string.IsNullOrEmpty(mapping.PositivePromptNodeId) ||
+               string.IsNullOrEmpty(mapping.NegativePromptNodeId) ||
+               string.IsNullOrEmpty(mapping.SamplerNodeId) ||
+               string.IsNullOrEmpty(mapping.SaveImageNodeId);
+    }
 
-        return workflow;
+    /// <summary>
+    /// Auto-discovers node mappings from the workflow.
+    /// </summary>
+    private WorkflowNodeMapping AutoDiscoverNodes(JsonNode workflow)
+    {
+        var mapping = new WorkflowNodeMapping();
+        var workflowObject = workflow.AsObject();
+
+        // Find CLIPTextEncode nodes
+        var clipTextEncodeNodes = new List<string>();
+        foreach (var prop in workflowObject)
+        {
+            var node = prop.Value;
+            if (node?["class_type"]?.GetValue<string>() == "CLIPTextEncode")
+            {
+                clipTextEncodeNodes.Add(prop.Key);
+            }
+        }
+
+        // First CLIPTextEncode is typically positive, second is negative
+        if (clipTextEncodeNodes.Count > 0)
+            mapping.PositivePromptNodeId = clipTextEncodeNodes[0];
+        if (clipTextEncodeNodes.Count > 1)
+            mapping.NegativePromptNodeId = clipTextEncodeNodes[1];
+
+        // Find sampler node
+        var samplerNode = FindNodeByClassTypes(workflow, new[] { "KSampler", "KSamplerAdvanced" });
+        mapping.SamplerNodeId = samplerNode?.nodeId;
+
+        // Find save image node
+        var saveImageNode = FindNodeByClassTypes(workflow, new[] { "SaveImage", "PreviewImage" });
+        mapping.SaveImageNodeId = saveImageNode?.nodeId;
+
+        // Find latent image node
+        var latentNode = FindNodeByClassTypes(workflow, new[] { "EmptyLatentImage", "EmptySD3LatentImage" });
+        mapping.LatentImageNodeId = latentNode?.nodeId;
+
+        return mapping;
+    }
+
+    /// <summary>
+    /// Finds a node by its class type.
+    /// </summary>
+    private static (string nodeId, JsonNode node)? FindNodeByClassType(JsonNode workflow, string classType)
+    {
+        var workflowObject = workflow.AsObject();
+        foreach (var prop in workflowObject)
+        {
+            var node = prop.Value;
+            if (node?["class_type"]?.GetValue<string>() == classType)
+            {
+                return (prop.Key, node);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Finds a node by multiple possible class types.
+    /// </summary>
+    private static (string nodeId, JsonNode node)? FindNodeByClassTypes(JsonNode workflow, string[] classTypes)
+    {
+        var workflowObject = workflow.AsObject();
+        foreach (var prop in workflowObject)
+        {
+            var node = prop.Value;
+            var nodeClassType = node?["class_type"]?.GetValue<string>();
+            if (nodeClassType != null && classTypes.Contains(nodeClassType))
+            {
+                return (prop.Key, node);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the second node by class type, excluding a specific node ID.
+    /// </summary>
+    private static (string nodeId, JsonNode node)? FindSecondNodeByClassType(JsonNode workflow, string classType, string? excludeNodeId)
+    {
+        var workflowObject = workflow.AsObject();
+        foreach (var prop in workflowObject)
+        {
+            if (prop.Key == excludeNodeId)
+                continue;
+
+            var node = prop.Value;
+            if (node?["class_type"]?.GetValue<string>() == classType)
+            {
+                return (prop.Key, node);
+            }
+        }
+        return null;
     }
 }

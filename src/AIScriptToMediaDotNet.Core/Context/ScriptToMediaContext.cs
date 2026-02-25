@@ -160,6 +160,11 @@ public class ScriptToMediaContext
     public List<GeneratedImage> GeneratedImages { get; set; } = new();
 
     /// <summary>
+    /// Gets or sets the list of all errors that occurred during pipeline execution.
+    /// </summary>
+    public List<string> Errors { get; set; } = new();
+
+    /// <summary>
     /// Gets or sets a value indicating whether to generate images from photo prompts.
     /// </summary>
     public bool GenerateImages { get; set; }

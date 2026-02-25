@@ -58,9 +58,22 @@ public class VideoPromptVerifierAgent : VerifierAgent<VideoPromptVerificationInp
             _logger.LogInformation("Verification complete: {IsValid}", validationResult.IsValid);
 
             stopwatch.Stop();
-            return validationResult.IsValid
-                ? CreateSuccessResult(validationResult, stopwatch.Elapsed)
-                : CreateFailureResult<ValidationResult>(string.Join("; ", validationResult.Errors), stopwatch.Elapsed);
+            
+            // Always return the validation result, even if invalid, so best-attempt logic can use it
+            if (validationResult.IsValid)
+            {
+                return CreateSuccessResult(validationResult, stopwatch.Elapsed);
+            }
+            else
+            {
+                return new AgentResult<ValidationResult>
+                {
+                    Success = false,
+                    Data = validationResult,
+                    Errors = validationResult.Errors.ToList(),
+                    ExecutionTime = stopwatch.Elapsed
+                };
+            }
         }
         catch (JsonException ex)
         {

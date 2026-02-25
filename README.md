@@ -121,7 +121,7 @@ Each verification stage has up to 3 retry attempts. **Verifiers provide specific
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Ollama](https://ollama.ai) running locally (default: `http://localhost:11434`)
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) running locally
-- Recommended Ollama models: Configure via `appsettings.json` (e.g., `qwen3:latest`, `llama3.1`, `llava`, or similar capable models)
+- Recommended Ollama models: Configure via `appsettings.json` (e.g., `qwen3:latestt`, `llama3.1`, `llava`, or similar capable models)
 
 ## Quick Start
 

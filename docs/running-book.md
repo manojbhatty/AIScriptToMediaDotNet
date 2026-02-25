@@ -63,7 +63,7 @@ ollama serve
 ```bash
 # General purpose model (for parsing, creation, verification agents)
 # Configure model name in appsettings.json (Ollama:DefaultModel)
-ollama pull qwen3:latest
+ollama pull qwen3:latestt
 
 # Alternative (smaller, faster)
 ollama pull mistral
@@ -77,7 +77,7 @@ ollama pull mixtral
 ollama list
 # Should show installed models
 
-ollama run qwen3:latest "Hello, world!"
+ollama run qwen3:latest"Hello, world!"
 # Should return AI response (use model configured in appsettings.json)
 ```
 
@@ -122,18 +122,18 @@ The `appsettings.json` file is located in `src/AIScriptToMediaDotNet.App/`:
 {
   "Ollama": {
     "Endpoint": "http://localhost:11434",
-    "DefaultModel": "qwen3:latest",
+    "DefaultModel": "qwen3:latestt",
     "TimeoutSeconds": 120,
     "MaxRetries": 3,
     "RetryDelaySeconds": 2,
     "AgentModels": {
-      "DefaultModel": "qwen3:latest",
-      "SceneParser": "qwen3:latest",
-      "SceneVerifier": "qwen3:latest",
-      "PhotoPromptCreator": "qwen3:latest",
-      "PhotoPromptVerifier": "qwen3:latest",
-      "VideoPromptCreator": "qwen3:latest",
-      "VideoPromptVerifier": "qwen3:latest"
+      "DefaultModel": "qwen3:latestt",
+      "SceneParser": "qwen3:latestt",
+      "SceneVerifier": "qwen3:latestt",
+      "PhotoPromptCreator": "qwen3:latestt",
+      "PhotoPromptVerifier": "qwen3:latestt",
+      "VideoPromptCreator": "qwen3:latestt",
+      "VideoPromptVerifier": "qwen3:latestt"
     }
   },
   "Logging": {
@@ -146,7 +146,7 @@ The `appsettings.json` file is located in `src/AIScriptToMediaDotNet.App/`:
 }
 ```
 
-> **Note**: Model names are configurable. Replace `qwen3:latest` with your preferred model (e.g., `llama3.1`, `mistral`, `mixtral`).
+> **Note**: Model names are configurable. Replace `qwen3:latestt` with your preferred model (e.g., `llama3.1`, `mistral`, `mixtral`).
 
 ### Environment Variables (Alternative)
 
@@ -344,7 +344,7 @@ set DOTNET_LOGGING__CONSOLE__LOGLEVEL=Debug     # Windows
 ```bash
 # Check which model is configured in appsettings.json
 # Then pull that model:
-ollama pull qwen3:latest
+ollama pull qwen3:latestt
 ```
 
 ---
@@ -447,8 +447,8 @@ start ./output/images
 | Use Case | Recommended Model |
 |----------|-------------------|
 | Fast iteration | `mistral`, `phi3` |
-| Best quality | Configure in `appsettings.json` (e.g., `qwen3:latest`, `mixtral`) |
-| Balanced | Configure in `appsettings.json` (e.g., `qwen3:latest`) |
+| Best quality | Configure in `appsettings.json` (e.g., `qwen3:latestt`, `mixtral`) |
+| Balanced | Configure in `appsettings.json` (e.g., `qwen3:latestt`) |
 
 ---
 

@@ -157,7 +157,7 @@ public class ImageGenerationAgent : IAgent<ImageGenerationInput, ImageGeneration
                 // Build ComfyUI workflow with a positive random seed
                 // Use uint range to ensure always positive (0 to int.MaxValue)
                 var seed = Random.Shared.Next(0, int.MaxValue);
-                var comfyPrompt = _workflowBuilder.BuildPrompt(photoPrompt, seed, outputPath);
+                var comfyPrompt = await _workflowBuilder.BuildPromptAsync(photoPrompt, seed, outputPath, cancellationToken);
 
                 _logger.LogInformation("Workflow built, now queueing to ComfyUI...");
 

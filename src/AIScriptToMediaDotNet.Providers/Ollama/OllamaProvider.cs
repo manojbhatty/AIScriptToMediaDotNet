@@ -26,12 +26,28 @@ public class OllamaProvider : IAIProvider
     /// </summary>
     public OllamaProvider(
         HttpClient httpClient,
-        Microsoft.Extensions.Options.IOptionsSnapshot<OllamaOptions> options,
+        Microsoft.Extensions.Options.IOptions<OllamaOptions> options,
         ILogger<OllamaProvider> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        // Log timeout configuration
+        var timeout = _httpClient.Timeout;
+        WriteDebugLog($"[OllamaProvider] HttpClient.Timeout={timeout.TotalSeconds}s, Options.TimeoutSeconds={_options.TimeoutSeconds}, Endpoint={_options.Endpoint}");
+        _logger.LogInformation("OllamaProvider initialized: Timeout={Timeout}s, Endpoint={Endpoint}", timeout.TotalSeconds, _options.Endpoint);
+    }
+    
+    private static void WriteDebugLog(string message)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "debug-ollama.log");
+            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            File.AppendAllText(logPath, $"[{timestamp}] {message}{Environment.NewLine}");
+        }
+        catch { }
     }
 
     /// <inheritdoc />

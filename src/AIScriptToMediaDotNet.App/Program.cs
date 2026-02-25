@@ -189,6 +189,13 @@ internal class Program
             .AddEnvironmentVariables()
             .Build();
 
+        // Write debug log for configuration
+        WriteDebugLog($"[Program] AppPath={appPath}");
+        WriteDebugLog($"[Program] Ollama:TimeoutSeconds={configuration["Ollama:TimeoutSeconds"]}");
+        WriteDebugLog($"[Program] Ollama:Endpoint={configuration["Ollama:Endpoint"]}");
+        WriteDebugLog($"[Program] Ollama:DefaultModel={configuration["Ollama:DefaultModel"]}");
+        WriteDebugLog($"[Program] appsettings.json exists={File.Exists(Path.Combine(appPath, "appsettings.json"))}");
+
         // Build service collection
         var services = new ServiceCollection();
         ConfigureServices(services, configuration, options);
@@ -264,11 +271,36 @@ internal class Program
                     }
                 }
             }
+            
+            // Show failure summary if pipeline failed
+            if (!context.IsComplete && context.Errors.Any())
+            {
+                Console.WriteLine();
+                Console.WriteLine("═══════════════════════════════════════════════════════");
+                Console.WriteLine("                    FAILURE SUMMARY");
+                Console.WriteLine("═══════════════════════════════════════════════════════");
+                Console.WriteLine($"Total Errors: {context.Errors.Count}");
+                Console.WriteLine();
+                foreach (var error in context.Errors)
+                {
+                    Console.WriteLine($"  ❌ {error}");
+                }
+                Console.WriteLine("═══════════════════════════════════════════════════════");
+                Console.WriteLine();
+                Console.WriteLine($"Detailed error log: {options.OutputPath ?? "./output"}\\error-*.md");
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════");
+            Console.WriteLine("                    FATAL ERROR");
+            Console.WriteLine("═══════════════════════════════════════════════════════");
             Console.WriteLine($"Error: {ex.Message}");
+            Console.WriteLine();
+            Console.WriteLine("Stack Trace:");
+            Console.WriteLine(ex.StackTrace);
+            Console.WriteLine("═══════════════════════════════════════════════════════");
         }
     }
 
@@ -282,10 +314,7 @@ internal class Program
         });
 
         // Add Ollama AI provider
-        services.AddOllama(opt =>
-        {
-            configuration.GetSection("Ollama").Bind(opt);
-        });
+        services.AddOllama(configuration.GetSection("Ollama"));
 
         // Load agent prompts from files
         var promptsPath = Path.Combine(AppContext.BaseDirectory, "Prompts");
@@ -300,48 +329,17 @@ internal class Program
         };
         services.AddSingleton(agentPrompts);
 
-        // Add ComfyUI client
+        // Add ComfyUI client with workflow configuration
         services.AddComfyUI(cfg =>
         {
             configuration.GetSection("ComfyUI").Bind(cfg);
+            
+            // Override workflow path if provided via command line
+            if (!string.IsNullOrEmpty(options.WorkflowPath))
+            {
+                cfg.WorkflowPath = Path.GetFullPath(options.WorkflowPath);
+            }
         });
-
-        // Add ComfyUI workflow builder
-        // Try multiple locations to find the workflow file
-        var workflowPath = !string.IsNullOrEmpty(options.WorkflowPath)
-            ? Path.GetFullPath(options.WorkflowPath)
-            : FindWorkflowFile();
-        
-        services.AddSingleton<ComfyUIWorkflowBuilder>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<ComfyUIWorkflowBuilder>>();
-            return new ComfyUIWorkflowBuilder(logger, workflowPath);
-        });
-
-        // Find the workflow file in common locations
-        static string FindWorkflowFile()
-        {
-            var workflowFileName = "ComfyUI_SDXL_Image_Generation.json";
-            
-            // Try 1: Relative to base directory (bin folder)
-            var baseDirPath = Path.Combine(AppContext.BaseDirectory, "ComfyUiWorkflows", workflowFileName);
-            if (File.Exists(baseDirPath))
-                return baseDirPath;
-            
-            // Try 2: Solution root (5 levels up from bin)
-            var solutionRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-            var solutionRootPath = Path.Combine(solutionRoot, "ComfyUiWorkflows", workflowFileName);
-            if (File.Exists(solutionRootPath))
-                return solutionRootPath;
-            
-            // Try 3: Current working directory
-            var cwdPath = Path.Combine(Directory.GetCurrentDirectory(), "ComfyUiWorkflows", workflowFileName);
-            if (File.Exists(cwdPath))
-                return cwdPath;
-            
-            // Default: return the base directory path (will use default workflow if not found)
-            return baseDirPath;
-        }
 
         // Add agents
         services.AddScoped<SceneParserAgent>(sp =>
@@ -404,10 +402,16 @@ internal class Program
         });
 
         // Add orchestrator
+        var pipelineOptions = new PipelineOptions();
+        configuration.GetSection("Pipeline").Bind(pipelineOptions);
+        
+        services.AddSingleton(pipelineOptions);
+        
         services.AddSingleton<PipelineOrchestrator>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<PipelineOrchestrator>>();
-            return new PipelineOrchestrator(logger, maxRetriesPerStage: 3);
+            var options = sp.GetRequiredService<PipelineOptions>();
+            return new PipelineOrchestrator(logger, maxRetriesPerStage: options.MaxRetriesPerStage);
         });
 
         // Add pipeline service
@@ -461,5 +465,20 @@ Output:
   ├── images/             - Generated images (if --generate-images is used)
   └── agent-log.md        - Execution log
 ");
+    }
+
+    private static void WriteDebugLog(string message)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "debug-ollama.log");
+            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            var logLine = $"[{timestamp}] {message}";
+            File.AppendAllText(logPath, logLine + Environment.NewLine);
+        }
+        catch
+        {
+            // Ignore logging errors
+        }
     }
 }

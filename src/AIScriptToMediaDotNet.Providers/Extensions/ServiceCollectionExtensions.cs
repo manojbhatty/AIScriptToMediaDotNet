@@ -2,6 +2,7 @@ using AIScriptToMediaDotNet.Core.Interfaces;
 using AIScriptToMediaDotNet.Core.Options;
 using AIScriptToMediaDotNet.Providers.Ollama;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AIScriptToMediaDotNet.Providers.Extensions;
 
@@ -13,9 +14,6 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Adds Ollama as the AI provider to the service collection.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configureOptions">Action to configure Ollama options.</param>
-    /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddOllama(
         this IServiceCollection services,
         Action<OllamaOptions>? configureOptions = null)
@@ -26,17 +24,30 @@ public static class ServiceCollectionExtensions
             services.Configure(configureOptions);
         }
 
-        // Configure HttpClient for Ollama - use IOptionsSnapshot for runtime resolution
-        services.AddHttpClient<OllamaProvider>((serviceProvider, client) =>
+        // Register HttpClient factory
+        services.AddHttpClient();
+        
+        // Register OllamaProvider with factory that creates HttpClient with correct timeout
+        services.AddScoped<OllamaProvider>(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptionsSnapshot<OllamaOptions>>().Value;
-            client.BaseAddress = new Uri(options.Endpoint);
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            var logger = serviceProvider.GetRequiredService<ILogger<OllamaProvider>>();
+            
+            // Create HttpClient with explicit timeout
+            var httpClient = new HttpClient
+            {
+                BaseAddress = new Uri(options.Endpoint),
+                Timeout = TimeSpan.FromSeconds(Math.Max(options.TimeoutSeconds, 300))
+            };
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+            
+            WriteDebugLog($"[AddOllama #1] Timeout={httpClient.Timeout.TotalSeconds}s, Endpoint={options.Endpoint}");
+            
+            return new OllamaProvider(httpClient, Microsoft.Extensions.Options.Options.Create(options), logger);
         });
 
         // Register as IAIProvider
-        services.AddScoped<IAIProvider, OllamaProvider>();
+        services.AddScoped<IAIProvider>(sp => sp.GetRequiredService<OllamaProvider>());
 
         return services;
     }
@@ -44,9 +55,6 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Adds Ollama as the AI provider with options from configuration.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configurationSection">Configuration section containing Ollama settings.</param>
-    /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddOllama(
         this IServiceCollection services,
         Microsoft.Extensions.Configuration.IConfigurationSection configurationSection)
@@ -54,18 +62,42 @@ public static class ServiceCollectionExtensions
         // Bind configuration to options
         services.Configure<OllamaOptions>(configurationSection);
 
-        // Configure HttpClient for Ollama - use IOptionsSnapshot for runtime resolution
-        services.AddHttpClient<OllamaProvider>((serviceProvider, client) =>
+        // Register HttpClient factory
+        services.AddHttpClient();
+        
+        // Register OllamaProvider with factory that creates HttpClient with correct timeout
+        services.AddScoped<OllamaProvider>(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptionsSnapshot<OllamaOptions>>().Value;
-            client.BaseAddress = new Uri(options.Endpoint);
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            var logger = serviceProvider.GetRequiredService<ILogger<OllamaProvider>>();
+            
+            // Create HttpClient with explicit timeout
+            var httpClient = new HttpClient
+            {
+                BaseAddress = new Uri(options.Endpoint),
+                Timeout = TimeSpan.FromSeconds(Math.Max(options.TimeoutSeconds, 300))
+            };
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+            
+            WriteDebugLog($"[AddOllama Direct] Timeout={httpClient.Timeout.TotalSeconds}s, Endpoint={options.Endpoint}");
+            
+            return new OllamaProvider(httpClient, Microsoft.Extensions.Options.Options.Create(options), logger);
         });
 
         // Register as IAIProvider
-        services.AddScoped<IAIProvider, OllamaProvider>();
+        services.AddScoped<IAIProvider>(sp => sp.GetRequiredService<OllamaProvider>());
 
         return services;
+    }
+
+    private static void WriteDebugLog(string message)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "debug-ollama.log");
+            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            File.AppendAllText(logPath, $"[{timestamp}] {message}{Environment.NewLine}");
+        }
+        catch { }
     }
 }
